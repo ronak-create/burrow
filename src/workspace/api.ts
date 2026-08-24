@@ -1,0 +1,78 @@
+import { invoke } from "@tauri-apps/api/core";
+import type { Board } from "../canvas/types";
+
+/**
+ * Typed surface over the Rust workspace commands. Every path here stays on the
+ * user's disk — nothing in this module touches a network.
+ */
+
+export interface WorkspaceMeta {
+  id: string;
+  name: string;
+  tags: string[];
+  createdAt: string;
+  lastOpenedAt: string;
+  /** Derived from board.json at list time, not stored in workspace.json. */
+  blockCount: number;
+}
+
+export interface TranscriptEntry {
+  role: "user" | "assistant";
+  text: string;
+  at: string;
+  /** Present when the turn produced board edits, for "what did it do" review. */
+  commands?: string[];
+}
+
+export const defaultWorkspacesRoot = () => invoke<string>("default_workspaces_root");
+
+export const listWorkspaces = (root: string) =>
+  invoke<WorkspaceMeta[]>("list_workspaces", { root });
+
+export const createWorkspace = (root: string, name: string, tags: string[] = []) =>
+  invoke<WorkspaceMeta>("create_workspace", { root, name, tags });
+
+export const readWorkspace = (root: string, id: string) =>
+  invoke<WorkspaceMeta>("read_workspace", { root, id });
+
+export const updateWorkspaceMeta = (
+  root: string,
+  id: string,
+  opts: { name?: string; tags?: string[]; touch?: boolean } = {},
+) =>
+  invoke<WorkspaceMeta>("update_workspace_meta", {
+    root,
+    id,
+    name: opts.name ?? null,
+    tags: opts.tags ?? null,
+    touch: opts.touch ?? false,
+  });
+
+export const readBoard = (root: string, id: string) => invoke<Board>("read_board", { root, id });
+
+export const writeBoard = (root: string, id: string, board: Board) =>
+  invoke<void>("write_board", { root, id, board });
+
+export const appendTranscript = (root: string, id: string, entry: TranscriptEntry) =>
+  invoke<void>("append_transcript", { root, id, entry });
+
+export const readTranscript = (root: string, id: string) =>
+  invoke<TranscriptEntry[]>("read_transcript", { root, id });
+
+export const deleteWorkspace = (root: string, id: string) =>
+  invoke<void>("delete_workspace", { root, id });
+
+/* ---------- BYOK keys (OS keychain) ---------- */
+
+export const setApiKey = (provider: string, key: string) =>
+  invoke<void>("set_api_key", { provider, key });
+
+/** Only the provider layer should call this. UI asks `hasApiKey` instead. */
+export const getApiKey = (provider: string) => invoke<string | null>("get_api_key", { provider });
+
+export const hasApiKey = (provider: string) => invoke<boolean>("has_api_key", { provider });
+
+export const deleteApiKey = (provider: string) => invoke<void>("delete_api_key", { provider });
+
+export const configuredProviders = (providers: string[]) =>
+  invoke<string[]>("configured_providers", { providers });
