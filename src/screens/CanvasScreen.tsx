@@ -13,6 +13,7 @@ import { useAutosave, saveNow } from "../workspace/persist";
 import { useCurrentWorkspace } from "../workspace/current";
 import DocumentViewer from "./DocumentViewer";
 import DocumentsPanel from "./DocumentsPanel";
+import { toastError } from "../ui/toast";
 import type { WorkspaceMeta } from "../workspace/api";
 
 /** Which shape variant the toolbar's shape buttons create. */
@@ -112,6 +113,10 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
     try {
       await saveNow(root, ws.id);
     } catch (e) {
+      // Losing work silently is the worst outcome in the app, so this is the one
+      // save failure the user is told about — autosave stays quiet because it
+      // retries, but leaving is the last chance to write the tail of a session.
+      toastError(e);
       console.error("save on exit failed", e);
     }
     onBack();
