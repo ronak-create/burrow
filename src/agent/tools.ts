@@ -7,6 +7,7 @@ import { isSparse } from "../canvas/serialize";
 import { DEFAULT_SIZE, type Block, type XY } from "../canvas/types";
 import { useCurrentWorkspace } from "../workspace/current";
 import { listDocuments, readDocumentText } from "../workspace/api";
+import { SOURCES, formatPaper, searchPapers, type Source } from "./research";
 
 /**
  * The assistant's vocabulary.
@@ -131,6 +132,28 @@ export const TOOLS: ToolSpec[] = [
         file: str("File name exactly as returned by list_documents, e.g. paper.pdf."),
       },
       required: ["file"],
+    },
+  },
+  {
+    name: "search_papers",
+    description:
+      "Search the academic literature. Free and needs no key. Sources are different corpora, not " +
+      "mirrors: arxiv is preprints, pubmed is biomedical, openalex is the broad index, " +
+      "semanticscholar carries abstracts and citation counts. Use 'all' unless the user named a " +
+      "source. This returns metadata and abstracts, not full text — do not claim to have read a " +
+      "paper you have only seen the abstract of.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: str("What to search for. Keywords work better than a full sentence."),
+        source: {
+          type: "string",
+          enum: [...SOURCES, "all"],
+          description: "Which corpus to search. Defaults to all.",
+        },
+        limit: num("How many results per source, 1 to 25. Defaults to 8."),
+      },
+      required: ["query"],
     },
   },
   {
@@ -383,6 +406,31 @@ export async function runTool(call: ToolCall): Promise<ToolResult> {
           );
         }
         return ok(call.id, text);
+      }
+
+      case "search_papers": {
+        const query = String(a.query ?? "").trim();
+        if (!query) return fail(call.id, "What should I search for?");
+        const source = (
+          typeof a.source === "string" && [...SOURCES, "all"].includes(a.source) ? a.source : "all"
+        ) as Source | "all";
+        const limit = typeof a.limit === "number" ? a.limit : 8;
+
+        const { papers, failed } = await searchPapers(query, source, limit);
+        if (papers.length === 0) {
+          const why = failed.length
+            ? ` Every source queried failed: ${failed.map((f) => `${f.source} (${f.error})`).join(", ")}.`
+            : "";
+          return fail(call.id, `No results for "${query}".${why}`);
+        }
+
+        const body = papers.map(formatPaper).join("\n\n");
+        // A partial outage must be visible, or a thin result set reads as "little
+        // has been written on this" rather than "two indexes were unreachable".
+        const note = failed.length
+          ? `\n\n[${failed.map((f) => f.source).join(" and ")} could not be reached, so these results are incomplete.]`
+          : "";
+        return ok(call.id, `${papers.length} result(s) for "${query}":\n\n${body}${note}`);
       }
 
       case "add_frame": {
