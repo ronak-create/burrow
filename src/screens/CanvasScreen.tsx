@@ -12,6 +12,7 @@ import { type BlockKind } from "../canvas/types";
 import { useAutosave, saveNow } from "../workspace/persist";
 import { useCurrentWorkspace } from "../workspace/current";
 import DocumentViewer from "./DocumentViewer";
+import DocumentsPanel from "./DocumentsPanel";
 import type { WorkspaceMeta } from "../workspace/api";
 
 /** Every block kind the toolbar can draw. */
@@ -54,6 +55,7 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
   const past = useBoard((s) => s.past.length);
   const { zoomIn, zoomOut, fitView, getZoom } = useReactFlow();
   const [showSettings, setShowSettings] = useState(false);
+  const [showDocs, setShowDocs] = useState(false);
   const [showPanel, setShowPanel] = useState(true);
   const mode = useCanvasMode((s) => s.mode);
   const setMode = useCanvasMode((s) => s.setMode);
@@ -190,6 +192,9 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
         <button onClick={() => fitView({ padding: 0.2 })} style={iconBtn} title="Fit to content">
           <Icon name="fit" />
         </button>
+        <button onClick={() => setShowDocs(true)} style={iconBtn} title="Documents">
+          <Icon name="doc" />
+        </button>
         <button onClick={() => setShowSettings(true)} style={iconBtn} title="Settings">
           <Icon name="settings" />
         </button>
@@ -298,6 +303,7 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
       </div>
 
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+      {showDocs && <DocumentsPanel onClose={() => setShowDocs(false)} />}
       <DocumentViewer />
     </div>
   );

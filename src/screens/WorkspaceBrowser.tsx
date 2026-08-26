@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   createWorkspace,
+  deleteWorkspace,
   listWorkspaces,
   searchWorkspaces,
   updateWorkspaceMeta,
@@ -29,6 +30,10 @@ export default function WorkspaceBrowser({
   const [creating, setCreating] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [hits, setHits] = useState<SearchHit[]>([]);
+  /** The workspace awaiting a delete confirmation, if any. */
+  const [confirming, setConfirming] = useState<WorkspaceMeta | null>(null);
+  const [renaming, setRenaming] = useState<WorkspaceMeta | null>(null);
+  const [renameTo, setRenameTo] = useState("");
 
   /**
    * Content search across every workspace (spec C), not just a name filter.
@@ -85,6 +90,33 @@ export default function WorkspaceBrowser({
     // Pinned first; the backend already returns the rest by last-opened.
     return [...matched].sort((a, b) => Number(b.pinned) - Number(a.pinned));
   }, [items, query, activeTag]);
+
+  async function destroy(ws: WorkspaceMeta) {
+    try {
+      await deleteWorkspace(root, ws.id);
+      setConfirming(null);
+      await refresh();
+    } catch (e) {
+      toastError(e);
+    }
+  }
+
+  async function rename(ws: WorkspaceMeta, name: string) {
+    const next = name.trim();
+    // Renaming only changes the display name; the folder id is what other things
+    // reference, so it deliberately stays put.
+    if (!next || next === ws.name) {
+      setRenaming(null);
+      return;
+    }
+    try {
+      await updateWorkspaceMeta(root, ws.id, { name: next });
+      setRenaming(null);
+      await refresh();
+    } catch (e) {
+      toastError(e);
+    }
+  }
 
   async function togglePin(ws: WorkspaceMeta) {
     // Update on disk first, then re-list, so the order shown always matches the
@@ -492,6 +524,51 @@ export default function WorkspaceBrowser({
                   <Icon name={ws.pinned ? "pin" : "pinOff"} size={14} />
                 </button>
 
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRenaming(ws);
+                    setRenameTo(ws.name);
+                  }}
+                  title="Rename"
+                  aria-label="Rename"
+                  style={{
+                    position: "absolute",
+                    top: 10,
+                    right: 62,
+                    display: "grid",
+                    placeItems: "center",
+                    width: 26,
+                    height: 26,
+                    borderRadius: "var(--r-sm)",
+                    color: "var(--text-faint)",
+                  }}
+                >
+                  <Icon name="text" size={14} />
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirming(ws);
+                  }}
+                  title="Delete workspace"
+                  aria-label="Delete workspace"
+                  style={{
+                    position: "absolute",
+                    top: 10,
+                    right: 36,
+                    display: "grid",
+                    placeItems: "center",
+                    width: 26,
+                    height: 26,
+                    borderRadius: "var(--r-sm)",
+                    color: "var(--text-faint)",
+                  }}
+                >
+                  <Icon name="trash" size={14} />
+                </button>
+
                 <div
                   style={{
                     width: 28,
@@ -537,6 +614,153 @@ export default function WorkspaceBrowser({
           </div>
         )}
       </div>
+
+      {confirming && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setConfirming(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 60,
+            background: "rgba(0, 0, 0, 0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 440,
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-lg)",
+              boxShadow: "var(--shadow-pop)",
+              padding: 20,
+            }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>
+              Delete “{confirming.name}”?
+            </div>
+            <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 18 }}>
+              This removes the whole folder from your disk — the board, every document
+              and image you imported, and the conversation transcript. It cannot be
+              undone from inside Burrow.
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button
+                onClick={() => setConfirming(null)}
+                style={{
+                  color: "var(--text-muted)",
+                  padding: "8px 14px",
+                  borderRadius: "var(--r-sm)",
+                  fontSize: 14,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void destroy(confirming)}
+                style={{
+                  padding: "8px 18px",
+                  borderRadius: "var(--r-sm)",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  background: "var(--danger)",
+                  color: "var(--on-accent)",
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {renaming && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setRenaming(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 60,
+            background: "rgba(0, 0, 0, 0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 440,
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-lg)",
+              boxShadow: "var(--shadow-pop)",
+              padding: 20,
+            }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>
+              Rename workspace
+            </div>
+            <input
+              autoFocus
+              value={renameTo}
+              onChange={(e) => setRenameTo(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void rename(renaming, renameTo);
+                if (e.key === "Escape") setRenaming(null);
+              }}
+              style={{
+                width: "100%",
+                background: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r-sm)",
+                padding: "9px 12px",
+                outline: "none",
+                marginBottom: 18,
+              }}
+            />
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button
+                onClick={() => setRenaming(null)}
+                style={{
+                  color: "var(--text-muted)",
+                  padding: "8px 14px",
+                  borderRadius: "var(--r-sm)",
+                  fontSize: 14,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void rename(renaming, renameTo)}
+                disabled={!renameTo.trim()}
+                style={{
+                  padding: "8px 18px",
+                  borderRadius: "var(--r-sm)",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  background: "var(--accent)",
+                  color: "var(--on-accent)",
+                  opacity: renameTo.trim() ? 1 : 0.4,
+                }}
+              >
+                Rename
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
     </div>
