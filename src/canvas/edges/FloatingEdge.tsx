@@ -54,7 +54,7 @@ export default function FloatingEdge({
               border: "1px solid var(--border)",
               borderRadius: 4,
               padding: "1px 6px",
-              fontSize: 10,
+              fontSize: 11,
               color: "var(--text-muted)",
               pointerEvents: "all",
             }}

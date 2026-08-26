@@ -9,6 +9,8 @@ import {
   type WorkspaceMeta,
 } from "./workspace/api";
 import { emptyBoard } from "./canvas/types";
+import { seedGettingStarted } from "./workspace/gettingStarted";
+import { Toasts } from "./ui/toast";
 
 /**
  * Two screens, no router: a workspace list and an open board. Opening a workspace
@@ -22,7 +24,14 @@ export default function App() {
   const load = useBoard((s) => s.load);
 
   useEffect(() => {
-    defaultWorkspacesRoot().then(setRoot).catch((e) => setError(String(e)));
+    defaultWorkspacesRoot()
+      .then(async (r) => {
+        // Seeding is best-effort and never throws, so a failed tutorial write
+        // cannot stop the app from reaching the workspace list.
+        await seedGettingStarted(r);
+        setRoot(r);
+      })
+      .catch((e) => setError(String(e)));
   }, []);
 
   async function openWorkspace(ws: WorkspaceMeta) {
@@ -45,12 +54,12 @@ export default function App() {
   if (error) {
     return (
       <div style={{ padding: 40, maxWidth: 640, margin: "0 auto" }}>
-        <h2 style={{ fontSize: 16 }}>Could not start</h2>
+        <h2 style={{ fontSize: 17 }}>Could not start</h2>
         <pre
           className="selectable"
           style={{
             color: "var(--danger)",
-            fontSize: 12,
+            fontSize: 13,
             fontFamily: "var(--font-mono)",
             whiteSpace: "pre-wrap",
           }}
@@ -69,9 +78,14 @@ export default function App() {
     );
   }
 
-  return open ? (
-    <CanvasScreen ws={open} root={root} onBack={closeWorkspace} />
-  ) : (
-    <WorkspaceBrowser root={root} onOpen={openWorkspace} />
+  return (
+    <>
+      {open ? (
+        <CanvasScreen ws={open} root={root} onBack={closeWorkspace} />
+      ) : (
+        <WorkspaceBrowser root={root} onOpen={openWorkspace} />
+      )}
+      <Toasts />
+    </>
   );
 }

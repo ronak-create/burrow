@@ -4,6 +4,9 @@ import { configuredProviders, getApiKey } from "../workspace/api";
 import { anthropic } from "./llm/anthropic";
 import { google } from "./llm/google";
 import { openai } from "./llm/openai";
+import { groq } from "./llm/groq";
+import { cerebras } from "./llm/cerebras";
+import { custom } from "./llm/custom";
 import { deepgram } from "./stt/deepgram";
 import { groqWhisper, openaiWhisper } from "./stt/whisper";
 import type { LLMProvider, STTProvider } from "./types";
@@ -17,7 +20,7 @@ import type { LLMProvider, STTProvider } from "./types";
  * registry rather than assuming any provider exists.
  */
 
-export const LLM_PROVIDERS: LLMProvider[] = [anthropic, openai, google];
+export const LLM_PROVIDERS: LLMProvider[] = [anthropic, openai, google, groq, cerebras, custom];
 export const STT_PROVIDERS: STTProvider[] = [groqWhisper, openaiWhisper, deepgram];
 
 /** Every provider id we might hold a key for. The keychain cannot be enumerated. */
@@ -27,14 +30,21 @@ export interface Settings {
   llmProvider: string;
   llmModel: string;
   sttProvider: string;
+  /** Base URL for the "Custom / Local" provider, e.g. an Ollama server. */
+  customBaseUrl: string;
   /** Speak assistant replies aloud. */
   voiceReplies: boolean;
 }
 
 const DEFAULTS: Settings = {
-  llmProvider: "anthropic",
-  llmModel: "claude-sonnet-5",
+  // Local by default. A fresh install should be able to reason without the user
+  // handing money to anyone first — that is the whole point of the BYOK posture,
+  // and a hosted provider is one dropdown away. The model is left blank because
+  // it depends on what the machine has pulled; Settings offers a Detect button.
+  llmProvider: "custom",
+  llmModel: "",
   sttProvider: "groq",
+  customBaseUrl: "http://127.0.0.1:11434/v1",
   voiceReplies: true,
 };
 
@@ -85,6 +95,12 @@ export const useProviders = create<RegistryState>((set, get) => ({
 /* ---------- capability queries ---------- */
 
 export function canChat(s: RegistryState = useProviders.getState()): boolean {
+  const provider = LLM_PROVIDERS.find((p) => p.id === s.settings.llmProvider);
+  // A keyless provider is ready once it has somewhere to talk to and something to
+  // run — asking the keychain about it would always say "not configured".
+  if (provider?.keyOptional) {
+    return Boolean(s.settings.customBaseUrl.trim() && s.settings.llmModel.trim());
+  }
   return s.configured.includes(s.settings.llmProvider);
 }
 
@@ -106,9 +122,18 @@ export function activeSTT(): STTProvider {
   return STT_PROVIDERS.find((p) => p.id === settings.sttProvider) ?? groqWhisper;
 }
 
-/** Fetch a key at the point of use. Never cached in module state. */
-export async function keyFor(providerId: string): Promise<string> {
+/**
+ * Fetch a key at the point of use. Never cached in module state.
+ *
+ * `optional` is for providers that can run without one — a local model server on
+ * loopback. Those still get any key the user chose to store, since some local
+ * runtimes are put behind a token, but a missing key is not an error.
+ */
+export async function keyFor(providerId: string, optional = false): Promise<string> {
   const key = await getApiKey(providerId);
-  if (!key) throw new Error(`No API key configured for ${providerId}. Add one in Settings.`);
+  if (!key) {
+    if (optional) return "";
+    throw new Error(`No API key configured for ${providerId}. Add one in Settings.`);
+  }
   return key;
 }

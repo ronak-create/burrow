@@ -1,126 +1,133 @@
-/* Design tokens.
+/* Design tokens — monochrome.
  *
- * Two themes over one variable set. `data-theme` on <html> is authoritative and is
- * set by the app; the media query only decides what "system" resolves to. Every
- * colour in the app must come from here — a hardcoded hex is a bug, because it
- * will be wrong in one of the two themes. */
+ * The app is black and white: every colour here is a neutral grey, so nothing in
+ * the chrome competes with the board's own content. `data-theme` on <html> is
+ * authoritative and is set by the app; the media query only decides what "system"
+ * resolves to. Every colour in the app must come from here — a hardcoded hex is a
+ * bug, because it will be wrong in one of the two themes.
+ *
+ * "Accent" is kept as a name so components need not change, but it is now simply
+ * the brightest neutral: near-white on dark, near-black on light. */
 
 :root {
-  /* violet accent — shared, tuned per theme below for contrast */
-  --accent: #7c5cff;
-  --accent-hover: #8b6dff;
-  --accent-dim: #5b3fd1;
-  --accent-wash: rgba(124, 92, 255, 0.14);
-  --accent-line: rgba(124, 92, 255, 0.45);
-  --frame-wash: rgba(124, 92, 255, 0.045);
-  /* Text/icons placed on a filled accent surface. Accent is dark in both themes,
-     so this stays white — but naming it stops it being mistaken for a theme colour. */
-  --on-accent: #ffffff;
-
-  /* status — readable on both grounds */
-  --danger: #f2555a;
-  --ok: #3ecf8e;
-  --warn: #e5a13a;
-  --danger-wash: rgba(242, 85, 90, 0.08);
-  --danger-line: rgba(242, 85, 90, 0.3);
-
   /* geometry */
   --r-sm: 6px;
   --r-md: 10px;
   --r-lg: 14px;
   --r-xl: 18px;
 
-  /* type */
-  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  /* type — plain system UI faces, no webfont to load and no decorative styling */
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
 }
 
-/* ---------- dark (also the default before the app sets data-theme) ---------- */
+/* ---------- dark (the default, and what the app ships as) ---------- */
 :root,
 :root[data-theme="dark"] {
-  --bg: #0a0a0c;
-  --surface: #101013;
-  --surface-2: #16161a;
-  --card: #1a1a1f;
-  --card-hover: #1f1f25;
+  --bg: #000000;
+  --surface: #0b0b0b;
+  --surface-2: #131313;
+  --card: #161616;
+  --card-hover: #1f1f1f;
 
-  --border: #26262c;
-  --border-strong: #33333b;
-  --canvas-dot: #22222a;
+  --border: #2a2a2a;
+  --border-strong: #3d3d3d;
+  --canvas-dot: #242424;
 
-  --text: #ececf1;
-  --text-muted: #8b8b96;
-  --text-faint: #5c5c66;
+  --text: #f2f2f2;
+  --text-muted: #909090;
+  --text-faint: #5e5e5e;
 
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.25);
-  --shadow-pop: 0 8px 32px rgba(0, 0, 0, 0.55);
+  /* The brightest neutral — selection, active state, primary buttons. */
+  --accent: #f2f2f2;
+  --accent-hover: #ffffff;
+  --accent-dim: #6b6b6b;
+  --accent-wash: rgba(255, 255, 255, 0.1);
+  --accent-line: rgba(255, 255, 255, 0.38);
+  --frame-wash: rgba(255, 255, 255, 0.035);
+  /* Sits on a filled accent surface, which is near-white here. */
+  --on-accent: #000000;
+
+  /* Status carries no hue in a monochrome palette, so it separates by brightness:
+     danger reads as the loudest neutral, warn as a solid white chip. */
+  --danger: #ffffff;
+  --ok: #b8b8b8;
+  --warn: #ffffff;
+  --danger-wash: rgba(255, 255, 255, 0.07);
+  --danger-line: rgba(255, 255, 255, 0.42);
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-pop: 0 8px 32px rgba(0, 0, 0, 0.7);
 
   color-scheme: dark;
 }
 
 /* ---------- light ---------- */
 :root[data-theme="light"] {
-  --bg: #fafaFc;
+  --bg: #ffffff;
   --surface: #ffffff;
-  --surface-2: #f3f3f7;
+  --surface-2: #f4f4f4;
   --card: #ffffff;
-  --card-hover: #f7f7fa;
+  --card-hover: #f6f6f6;
 
-  --border: #e3e3ea;
-  --border-strong: #cfcfd9;
-  --canvas-dot: #d9d9e2;
+  --border: #e2e2e2;
+  --border-strong: #c8c8c8;
+  --canvas-dot: #d8d8d8;
 
-  --text: #17171c;
-  --text-muted: #5e5e6b;
-  --text-faint: #9797a4;
+  --text: #0d0d0d;
+  --text-muted: #5c5c5c;
+  --text-faint: #949494;
 
-  /* Darker accent: the dark-theme violet does not carry enough contrast on white. */
-  --accent: #6741e0;
-  --accent-hover: #7551f0;
-  --accent-dim: #a394e8;
-  --accent-wash: rgba(103, 65, 224, 0.09);
-  --accent-line: rgba(103, 65, 224, 0.4);
-  --frame-wash: rgba(103, 65, 224, 0.05);
+  --accent: #0d0d0d;
+  --accent-hover: #000000;
+  --accent-dim: #a8a8a8;
+  --accent-wash: rgba(0, 0, 0, 0.07);
+  --accent-line: rgba(0, 0, 0, 0.35);
+  --frame-wash: rgba(0, 0, 0, 0.03);
+  --on-accent: #ffffff;
 
-  --danger: #d93b41;
-  --ok: #1f9d64;
-  --warn: #b87514;
-  --danger-wash: rgba(217, 59, 65, 0.07);
-  --danger-line: rgba(217, 59, 65, 0.28);
+  --danger: #0d0d0d;
+  --ok: #5c5c5c;
+  --warn: #0d0d0d;
+  --danger-wash: rgba(0, 0, 0, 0.05);
+  --danger-line: rgba(0, 0, 0, 0.38);
 
-  --shadow-card: 0 1px 2px rgba(16, 16, 32, 0.06), 0 4px 14px rgba(16, 16, 32, 0.06);
-  --shadow-pop: 0 8px 30px rgba(16, 16, 32, 0.16);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.08), 0 4px 14px rgba(0, 0, 0, 0.07);
+  --shadow-pop: 0 8px 30px rgba(0, 0, 0, 0.18);
 
   color-scheme: light;
 }
 
-/* "System" resolves here. data-theme, when present, always wins over this. */
+/* "System" resolves here. data-theme, when present, always wins over this.
+   The app stamps data-theme="dark" on first paint, so this only applies if the
+   preference is explicitly set back to "system". */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
-    --bg: #fafafc;
+    --bg: #ffffff;
     --surface: #ffffff;
-    --surface-2: #f3f3f7;
+    --surface-2: #f4f4f4;
     --card: #ffffff;
-    --card-hover: #f7f7fa;
-    --border: #e3e3ea;
-    --border-strong: #cfcfd9;
-    --canvas-dot: #d9d9e2;
-    --text: #17171c;
-    --text-muted: #5e5e6b;
-    --text-faint: #9797a4;
-    --accent: #6741e0;
-    --accent-hover: #7551f0;
-    --accent-dim: #a394e8;
-    --accent-wash: rgba(103, 65, 224, 0.09);
-    --accent-line: rgba(103, 65, 224, 0.4);
-    --frame-wash: rgba(103, 65, 224, 0.05);
-    --danger: #d93b41;
-    --ok: #1f9d64;
-    --warn: #b87514;
-    --danger-wash: rgba(217, 59, 65, 0.07);
-    --danger-line: rgba(217, 59, 65, 0.28);
-    --shadow-card: 0 1px 2px rgba(16, 16, 32, 0.06), 0 4px 14px rgba(16, 16, 32, 0.06);
-    --shadow-pop: 0 8px 30px rgba(16, 16, 32, 0.16);
+    --card-hover: #f6f6f6;
+    --border: #e2e2e2;
+    --border-strong: #c8c8c8;
+    --canvas-dot: #d8d8d8;
+    --text: #0d0d0d;
+    --text-muted: #5c5c5c;
+    --text-faint: #949494;
+    --accent: #0d0d0d;
+    --accent-hover: #000000;
+    --accent-dim: #a8a8a8;
+    --accent-wash: rgba(0, 0, 0, 0.07);
+    --accent-line: rgba(0, 0, 0, 0.35);
+    --frame-wash: rgba(0, 0, 0, 0.03);
+    --on-accent: #ffffff;
+    --danger: #0d0d0d;
+    --ok: #5c5c5c;
+    --warn: #0d0d0d;
+    --danger-wash: rgba(0, 0, 0, 0.05);
+    --danger-line: rgba(0, 0, 0, 0.38);
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.08), 0 4px 14px rgba(0, 0, 0, 0.07);
+    --shadow-pop: 0 8px 30px rgba(0, 0, 0, 0.18);
     color-scheme: light;
   }
 }
@@ -140,7 +147,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   /* This is a desktop app, not a document. */

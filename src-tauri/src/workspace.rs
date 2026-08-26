@@ -23,6 +23,9 @@ pub struct WorkspaceMeta {
     pub tags: Vec<String>,
     pub created_at: String,
     pub last_opened_at: String,
+    /// Pinned workspaces sort above everything else in the browser.
+    #[serde(default)]
+    pub pinned: bool,
     /// Derived at list time from board.json, not persisted in workspace.json.
     #[serde(default)]
     pub block_count: usize,
@@ -133,6 +136,7 @@ pub fn create_workspace(
     root: String,
     name: String,
     tags: Vec<String>,
+    pinned: bool,
 ) -> Result<WorkspaceMeta, String> {
     let base = slugify(&name);
     // Never clobber an existing workspace: suffix until the folder name is free.
@@ -154,6 +158,7 @@ pub fn create_workspace(
         tags,
         created_at: ts.clone(),
         last_opened_at: ts,
+        pinned,
         block_count: 0,
     };
 
@@ -179,6 +184,7 @@ pub fn update_workspace_meta(
     id: String,
     name: Option<String>,
     tags: Option<Vec<String>>,
+    pinned: Option<bool>,
     touch: bool,
 ) -> Result<WorkspaceMeta, String> {
     let path = ws_dir(&root, &id).join("workspace.json");
@@ -189,6 +195,9 @@ pub fn update_workspace_meta(
     }
     if let Some(t) = tags {
         meta.tags = t;
+    }
+    if let Some(p) = pinned {
+        meta.pinned = p;
     }
     if touch {
         meta.last_opened_at = now();

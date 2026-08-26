@@ -64,7 +64,7 @@ export default function ShapeBlockView({ id, data, selected }: NodeProps<ShapeBl
             outline: "none",
             textAlign: "center",
             width: "100%",
-            fontSize: 13,
+            fontSize: 14,
             color: "var(--text)",
           }}
         />

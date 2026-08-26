@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { createWorkspace, listWorkspaces, type WorkspaceMeta } from "../workspace/api";
+import {
+  createWorkspace,
+  listWorkspaces,
+  updateWorkspaceMeta,
+  type WorkspaceMeta,
+} from "../workspace/api";
 import { Icon } from "../ui/icons";
+import Settings from "./Settings";
+import { toastError } from "../ui/toast";
 
 /**
  * The first screen: a flat list of workspaces sorted by last opened, filterable by
@@ -18,15 +25,15 @@ export default function WorkspaceBrowser({
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [newName, setNewName] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [newPinned, setNewPinned] = useState(false);
 
   const refresh = async () => {
     try {
       setItems(await listWorkspaces(root));
-      setError(null);
     } catch (e) {
-      setError(String(e));
+      toastError(e);
     }
   };
 
@@ -42,25 +49,39 @@ export default function WorkspaceBrowser({
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return items.filter((i) => {
+    const matched = items.filter((i) => {
       if (activeTag && !i.tags.includes(activeTag)) return false;
       if (!q) return true;
       return (
         i.name.toLowerCase().includes(q) || i.tags.some((t) => t.toLowerCase().includes(q))
       );
     });
+    // Pinned first; the backend already returns the rest by last-opened.
+    return [...matched].sort((a, b) => Number(b.pinned) - Number(a.pinned));
   }, [items, query, activeTag]);
+
+  async function togglePin(ws: WorkspaceMeta) {
+    // Update on disk first, then re-list, so the order shown always matches the
+    // order that would survive a restart.
+    try {
+      await updateWorkspaceMeta(root, ws.id, { pinned: !ws.pinned });
+      await refresh();
+    } catch (e) {
+      toastError(e);
+    }
+  }
 
   async function create() {
     const name = newName.trim();
     if (!name) return;
     try {
-      const ws = await createWorkspace(root, name, []);
+      const ws = await createWorkspace(root, name, [], newPinned);
       setNewName("");
+      setNewPinned(false);
       setCreating(false);
       onOpen(ws);
     } catch (e) {
-      setError(String(e));
+      toastError(e);
     }
   }
 
@@ -84,14 +105,14 @@ export default function WorkspaceBrowser({
             background: "var(--accent)",
             display: "grid",
             placeItems: "center",
-            fontSize: 18,
+            fontSize: 19,
           }}
         >
           <Icon name="logo" size={19} style={{ color: "var(--on-accent)" }} />
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 17, fontWeight: 650, letterSpacing: -0.2 }}>Burrow</div>
-          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+          <div style={{ fontSize: 18, fontWeight: 600 }}>Burrow</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
             Dig until you hit the root of it
           </div>
         </div>
@@ -103,12 +124,31 @@ export default function WorkspaceBrowser({
             padding: "8px 16px",
             borderRadius: "var(--r-md)",
             fontWeight: 500,
-            fontSize: 13,
+            fontSize: 14,
           }}
         >
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
             <Icon name="add" size={14} /> New
           </span>
+        </button>
+        <button
+          onClick={() => setShowSettings(true)}
+          title="Settings"
+          aria-label="Settings"
+          style={{
+            display: "grid",
+            placeItems: "center",
+            width: 34,
+            height: 34,
+            marginLeft: 4,
+            borderRadius: "var(--r-md)",
+            background: "transparent",
+            color: "var(--text-muted)",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-muted)")}
+        >
+          <Icon name="settings" size={18} />
         </button>
       </header>
 
@@ -135,7 +175,7 @@ export default function WorkspaceBrowser({
                 key={t}
                 onClick={() => setActiveTag(activeTag === t ? null : t)}
                 style={{
-                  fontSize: 11,
+                  fontSize: 12,
                   padding: "3px 9px",
                   borderRadius: 99,
                   border: `1px solid ${activeTag === t ? "var(--accent-line)" : "var(--border)"}`,
@@ -149,81 +189,154 @@ export default function WorkspaceBrowser({
           </div>
         )}
 
-        {error && (
-          <div
-            className="selectable"
-            style={{
-              background: "var(--danger-wash)",
-              border: "1px solid var(--danger-line)",
-              color: "var(--danger)",
-              borderRadius: "var(--r-md)",
-              padding: "10px 14px",
-              marginBottom: 16,
-              fontSize: 13,
-            }}
-          >
-            {error}
-          </div>
-        )}
-
         {creating && (
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="New workspace"
+            onClick={() => setCreating(false)}
             style={{
-              background: "var(--card)",
-              border: "1px solid var(--accent-line)",
-              borderRadius: "var(--r-lg)",
-              padding: 16,
-              marginBottom: 16,
+              position: "fixed",
+              inset: 0,
+              zIndex: 50,
+              background: "rgba(0, 0, 0, 0.6)",
               display: "flex",
-              gap: 8,
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 24,
             }}
           >
-            <input
-              autoFocus
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void create();
-                if (e.key === "Escape") setCreating(false);
-              }}
-              placeholder="Workspace name, e.g. Redis Deep Dive"
+            <div
+              // The backdrop closes on click, so clicks inside the card must not
+              // bubble up to it.
+              onClick={(e) => e.stopPropagation()}
               style={{
-                flex: 1,
-                background: "var(--surface-2)",
+                width: "100%",
+                maxWidth: 440,
+                background: "var(--surface)",
                 border: "1px solid var(--border)",
-                borderRadius: "var(--r-sm)",
-                padding: "8px 12px",
-                outline: "none",
-              }}
-            />
-            <button
-              onClick={() => void create()}
-              style={{
-                background: "var(--accent)",
-                color: "var(--on-accent)",
-                padding: "8px 16px",
-                borderRadius: "var(--r-sm)",
-                fontSize: 13,
+                borderRadius: "var(--r-lg)",
+                boxShadow: "var(--shadow-pop)",
+                padding: 20,
               }}
             >
-              Create
-            </button>
-            <button
-              onClick={() => setCreating(false)}
-              style={{ color: "var(--text-muted)", padding: "8px 10px", fontSize: 13 }}
-            >
-              Cancel
-            </button>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
+                New workspace
+              </div>
+              <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 16 }}>
+                A folder on your disk holding this project's board, documents and
+                transcript.
+              </div>
+
+              <input
+                autoFocus
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void create();
+                  if (e.key === "Escape") setCreating(false);
+                }}
+                placeholder="Workspace name, e.g. Redis Deep Dive"
+                style={{
+                  width: "100%",
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--r-sm)",
+                  padding: "9px 12px",
+                  outline: "none",
+                  marginBottom: 18,
+                }}
+              />
+
+              <button
+                onClick={() => setNewPinned((v) => !v)}
+                aria-pressed={newPinned}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  width: "100%",
+                  padding: "9px 12px",
+                  marginBottom: 18,
+                  borderRadius: "var(--r-sm)",
+                  border: `1px solid ${newPinned ? "var(--accent-line)" : "var(--border)"}`,
+                  background: newPinned ? "var(--accent-wash)" : "transparent",
+                  textAlign: "left",
+                }}
+              >
+                <span
+                  // Track and knob, drawn from tokens so it follows the theme.
+                  style={{
+                    flexShrink: 0,
+                    width: 32,
+                    height: 18,
+                    borderRadius: 99,
+                    background: newPinned ? "var(--accent)" : "var(--border-strong)",
+                    position: "relative",
+                    transition: "background 120ms ease",
+                  }}
+                >
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 2,
+                      left: newPinned ? 16 : 2,
+                      width: 14,
+                      height: 14,
+                      borderRadius: 99,
+                      background: newPinned ? "var(--on-accent)" : "var(--surface)",
+                      transition: "left 120ms ease",
+                    }}
+                  />
+                </span>
+                <span style={{ flex: 1 }}>
+                  <span style={{ display: "block", fontSize: 14 }}>Pin this workspace</span>
+                  <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)" }}>
+                    Keeps it at the top of the list.
+                  </span>
+                </span>
+              </button>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                <button
+                  onClick={() => setCreating(false)}
+                  style={{
+                    color: "var(--text-muted)",
+                    padding: "8px 14px",
+                    borderRadius: "var(--r-sm)",
+                    fontSize: 14,
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => void create()}
+                  disabled={!newName.trim()}
+                  style={{
+                    background: "var(--accent)",
+                    color: "var(--on-accent)",
+                    padding: "8px 18px",
+                    borderRadius: "var(--r-sm)",
+                    fontSize: 14,
+                    fontWeight: 500,
+                    opacity: newName.trim() ? 1 : 0.4,
+                    cursor: newName.trim() ? "pointer" : "not-allowed",
+                  }}
+                >
+                  Create
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
-        {shown.length === 0 && !creating ? (
+        {shown.length === 0 ? (
           <div
             style={{
               textAlign: "center",
               padding: "70px 0",
               color: "var(--text-faint)",
-              fontSize: 13,
+              fontSize: 14,
             }}
           >
             {items.length === 0
@@ -239,10 +352,20 @@ export default function WorkspaceBrowser({
             }}
           >
             {shown.map((ws) => (
-              <button
+              <div
                 key={ws.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => onOpen(ws)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onOpen(ws);
+                  }
+                }}
                 style={{
+                  position: "relative",
+                  cursor: "pointer",
                   textAlign: "left",
                   background: "var(--card)",
                   border: "1px solid var(--border)",
@@ -263,6 +386,28 @@ export default function WorkspaceBrowser({
                   e.currentTarget.style.borderColor = "var(--border)";
                 }}
               >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void togglePin(ws);
+                  }}
+                  title={ws.pinned ? "Unpin" : "Pin to top"}
+                  aria-label={ws.pinned ? "Unpin" : "Pin to top"}
+                  style={{
+                    position: "absolute",
+                    top: 10,
+                    right: 10,
+                    display: "grid",
+                    placeItems: "center",
+                    width: 26,
+                    height: 26,
+                    borderRadius: "var(--r-sm)",
+                    color: ws.pinned ? "var(--accent)" : "var(--text-faint)",
+                  }}
+                >
+                  <Icon name={ws.pinned ? "pin" : "pinOff"} size={14} />
+                </button>
+
                 <div
                   style={{
                     width: 28,
@@ -285,14 +430,14 @@ export default function WorkspaceBrowser({
                 </div>
                 <div style={{ fontWeight: 600, marginTop: "auto" }}>{ws.name}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                  <span style={{ fontSize: 12, color: "var(--text-faint)" }}>
                     {ws.blockCount} {ws.blockCount === 1 ? "block" : "blocks"}
                   </span>
                   {ws.tags.map((t) => (
                     <span
                       key={t}
                       style={{
-                        fontSize: 10,
+                        fontSize: 11,
                         padding: "2px 7px",
                         borderRadius: 4,
                         background: "var(--surface-2)",
@@ -303,11 +448,13 @@ export default function WorkspaceBrowser({
                     </span>
                   ))}
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
     </div>
   );
 }

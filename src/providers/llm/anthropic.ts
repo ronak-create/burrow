@@ -54,7 +54,7 @@ export const anthropic: LLMProvider = {
   models: [
     { id: "claude-opus-5", label: "Claude Opus 5" },
     { id: "claude-sonnet-5", label: "Claude Sonnet 5" },
-    { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5" },
+    { id: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
   ],
 
   async send(opts: SendOptions): Promise<LLMReply> {
@@ -68,7 +68,7 @@ export const anthropic: LLMProvider = {
       signal: opts.signal,
       body: JSON.stringify({
         model: opts.model,
-        max_tokens: opts.maxTokens ?? 2048,
+        max_tokens: opts.maxTokens ?? 8192,
         system: opts.system,
         messages: toWire(opts.messages),
         tools: opts.tools.map((t) => ({
@@ -89,7 +89,15 @@ export const anthropic: LLMProvider = {
     const json = (await res.json()) as {
       content?: AnthropicBlock[];
       stop_reason?: string;
+      stop_details?: { category?: string | null; explanation?: string };
     };
+
+    // A refusal arrives as a normal 200 with an empty content array. Without this
+    // the turn would end silently, looking like the tool loop had failed.
+    if (json.stop_reason === "refusal") {
+      const why = json.stop_details?.category ?? "unspecified";
+      throw new Error(`Anthropic declined this request (${why}). Try rephrasing it.`);
+    }
 
     let text = "";
     const toolCalls: ToolCall[] = [];

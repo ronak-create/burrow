@@ -9,7 +9,9 @@ import {
 } from "../providers/registry";
 import { deleteApiKey, setApiKey } from "../workspace/api";
 import { Icon } from "../ui/icons";
-import { resolvedTheme, useTheme, type ThemePref } from "../ui/theme";
+import { toastError, toastWarn } from "../ui/toast";
+import { listCustomModels } from "../providers/llm/custom";
+import { ACCENTS, resolvedTheme, useAccent, useTheme, type ThemePref } from "../ui/theme";
 
 const THEMES: Array<{ pref: ThemePref; label: string }> = [
   { pref: "system", label: "System" },
@@ -27,9 +29,29 @@ const THEMES: Array<{ pref: ThemePref; label: string }> = [
 export default function Settings({ onClose }: { onClose: () => void }) {
   const providers = useProviders();
   const theme = useTheme();
+  const accent = useAccent();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [found, setFound] = useState<string[]>([]);
+  const [detecting, setDetecting] = useState(false);
+
+  async function detect() {
+    setDetecting(true);
+    try {
+      const ids = await listCustomModels();
+      setFound(ids);
+      if (ids.length === 0) {
+        toastWarn("That endpoint answered but listed no models.");
+      } else if (!providers.settings.llmModel.trim()) {
+        // Nothing chosen yet, so pick one rather than making them retype it.
+        providers.update({ llmModel: ids[0] });
+      }
+    } catch (e) {
+      toastError(e);
+    } finally {
+      setDetecting(false);
+    }
+  }
 
   useEffect(() => {
     void providers.refresh();
@@ -40,13 +62,12 @@ export default function Settings({ onClose }: { onClose: () => void }) {
     const key = (drafts[id] ?? "").trim();
     if (!key) return;
     setSaving(id);
-    setError(null);
     try {
       await setApiKey(id, key);
       setDrafts((d) => ({ ...d, [id]: "" }));
       await providers.refresh();
     } catch (e) {
-      setError(String(e));
+      toastError(e);
     } finally {
       setSaving(null);
     }
@@ -58,15 +79,28 @@ export default function Settings({ onClose }: { onClose: () => void }) {
       await deleteApiKey(id);
       await providers.refresh();
     } catch (e) {
-      setError(String(e));
+      toastError(e);
     } finally {
       setSaving(null);
     }
   }
 
+  /**
+   * Only the keys the current selection actually needs.
+   *
+   * Listing every provider meant six slots for a setup that uses one, and it read
+   * as six things to do before the app worked. This follows the pickers above
+   * instead. It is usually a single row, and two only when reasoning and speech
+   * are on different providers — which is a real configuration, so the list is
+   * derived rather than hardcoded to one. A keyless provider contributes nothing.
+   */
+  const llm = LLM_PROVIDERS.find((p) => p.id === providers.settings.llmProvider);
+  const stt = STT_PROVIDERS.find((p) => p.id === providers.settings.sttProvider);
   const keyRows = [
-    ...LLM_PROVIDERS.map((p) => ({ id: p.id, label: p.label, use: "Reasoning", keyUrl: p.keyUrl })),
-    ...STT_PROVIDERS.map((p) => ({ id: p.id, label: p.label, use: "Speech-to-text", keyUrl: p.keyUrl })),
+    ...(llm && !llm.keyOptional
+      ? [{ id: llm.id, label: llm.label, use: "Reasoning", keyUrl: llm.keyUrl }]
+      : []),
+    ...(stt ? [{ id: stt.id, label: stt.label, use: "Speech-to-text", keyUrl: stt.keyUrl }] : []),
   ].filter((r, i, all) => all.findIndex((x) => x.id === r.id) === i);
 
   const capabilities = [
@@ -82,36 +116,45 @@ export default function Settings({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      onClick={onClose}
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.6)",
-        display: "grid",
-        placeItems: "center",
         zIndex: 100,
+        background: "var(--bg)",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
+      {/* Page header. Fixed above the scroll area, so Back is always reachable. */}
+      <header
         style={{
-          width: 560,
-          maxHeight: "82vh",
-          overflowY: "auto",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "14px 22px",
+          borderBottom: "1px solid var(--border)",
           background: "var(--surface)",
-          border: "1px solid var(--border-strong)",
-          borderRadius: "var(--r-xl)",
-          boxShadow: "var(--shadow-pop)",
-          padding: 24,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
-          <h2 style={{ fontSize: 16, margin: 0, flex: 1 }}>Settings</h2>
-          <button onClick={onClose} style={{ color: "var(--text-muted)", display: "grid", placeItems: "center" }} title="Close">
-            <Icon name="close" size={18} />
-          </button>
-        </div>
-        <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "0 0 20px" }}>
+        <button
+          onClick={onClose}
+          title="Back"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            color: "var(--text-muted)",
+            fontSize: 14,
+          }}
+        >
+          <Icon name="back" size={16} /> Back
+        </button>
+        <h2 style={{ fontSize: 16, margin: 0, fontWeight: 600 }}>Settings</h2>
+      </header>
+
+      <div style={{ flex: 1, overflowY: "auto" }}>
+        <div style={{ maxWidth: 620, margin: "0 auto", padding: "24px 22px 60px" }}>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 22px" }}>
           You bring your own keys. They are stored in your operating system's keychain, never in a
           file, and are sent only to the provider they belong to.
         </p>
@@ -126,7 +169,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
                   style={{
                     padding: "5px 12px",
                     borderRadius: "var(--r-sm)",
-                    fontSize: 12,
+                    fontSize: 13,
                     border: `1px solid ${theme.pref === t.pref ? "var(--accent-line)" : "var(--border)"}`,
                     background: theme.pref === t.pref ? "var(--accent-wash)" : "transparent",
                     color: theme.pref === t.pref ? "var(--accent)" : "var(--text-muted)",
@@ -138,10 +181,40 @@ export default function Settings({ onClose }: { onClose: () => void }) {
             </div>
           </Row>
           {theme.pref === "system" && (
-            <div style={{ fontSize: 11, color: "var(--text-faint)", paddingTop: 2 }}>
+            <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
               Following your OS setting — currently {resolvedTheme(theme.pref)}.
             </div>
           )}
+
+          <Row label="Accent">
+            <div style={{ display: "flex", gap: 6 }}>
+              {ACCENTS.map((a) => (
+                <button
+                  key={a.pref}
+                  onClick={() => accent.setAccent(a.pref)}
+                  title={a.label}
+                  aria-label={a.label}
+                  aria-pressed={accent.accent === a.pref}
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 99,
+                    background: a.swatch,
+                    // The selected swatch gets a ring drawn in the page background
+                    // so it reads against any colour, including near-white.
+                    boxShadow:
+                      accent.accent === a.pref
+                        ? "0 0 0 2px var(--bg), 0 0 0 4px var(--text)"
+                        : "none",
+                  }}
+                />
+              ))}
+            </div>
+          </Row>
+          <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
+            Monochrome keeps the interface black and white. Any other choice tints
+            selection, active state and primary buttons only.
+          </div>
         </Section>
 
         <Section title="What's working">
@@ -156,10 +229,10 @@ export default function Settings({ onClose }: { onClose: () => void }) {
                   flexShrink: 0,
                 }}
               />
-              <span style={{ fontSize: 13, color: c.on ? "var(--text)" : "var(--text-muted)" }}>
+              <span style={{ fontSize: 14, color: c.on ? "var(--text)" : "var(--text-muted)" }}>
                 {c.label}
               </span>
-              <span style={{ fontSize: 11, color: "var(--text-faint)", marginLeft: "auto" }}>
+              <span style={{ fontSize: 12, color: "var(--text-faint)", marginLeft: "auto" }}>
                 {c.note}
               </span>
             </div>
@@ -176,7 +249,13 @@ export default function Settings({ onClose }: { onClose: () => void }) {
                 const next = LLM_PROVIDERS.find((p) => p.id === e.target.value);
                 providers.update({
                   llmProvider: e.target.value,
-                  ...(next?.models[0] ? { llmModel: next.models[0].id } : {}),
+                  // A free-typed provider keeps whatever the user last typed; a
+                  // listed one snaps to its first model so the id is never stale.
+                  ...(next?.freeformModel
+                    ? {}
+                    : next?.models[0]
+                      ? { llmModel: next.models[0].id }
+                      : {}),
                 });
               }}
               style={selectStyle}
@@ -188,21 +267,68 @@ export default function Settings({ onClose }: { onClose: () => void }) {
               ))}
             </select>
           </Row>
-          <Row label="Model">
-            <select
-              value={providers.settings.llmModel}
-              onChange={(e) => providers.update({ llmModel: e.target.value })}
-              style={selectStyle}
-            >
-              {(LLM_PROVIDERS.find((p) => p.id === providers.settings.llmProvider)?.models ?? []).map(
-                (m) => (
+          {llm?.freeformModel ? (
+            <>
+              <Row label="Endpoint">
+                <input
+                  value={providers.settings.customBaseUrl}
+                  onChange={(e) => providers.update({ customBaseUrl: e.target.value })}
+                  placeholder="http://127.0.0.1:11434/v1"
+                  style={{ ...selectStyle, fontFamily: "var(--font-mono)", fontSize: 13 }}
+                />
+              </Row>
+              <Row label="Model">
+                <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input
+                    list="burrow-local-models"
+                    value={providers.settings.llmModel}
+                    onChange={(e) => providers.update({ llmModel: e.target.value })}
+                    placeholder="e.g. gemma4:e4b"
+                    style={{ ...selectStyle, fontFamily: "var(--font-mono)", fontSize: 13 }}
+                  />
+                  <datalist id="burrow-local-models">
+                    {found.map((m) => (
+                      <option key={m} value={m} />
+                    ))}
+                  </datalist>
+                  <button
+                    onClick={() => void detect()}
+                    disabled={detecting}
+                    title="Ask the endpoint which models it serves"
+                    style={{
+                      whiteSpace: "nowrap",
+                      padding: "6px 11px",
+                      borderRadius: "var(--r-sm)",
+                      fontSize: 13,
+                      border: "1px solid var(--border)",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {detecting ? "…" : "Detect"}
+                  </button>
+                </span>
+              </Row>
+              <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
+                Any OpenAI-compatible server — Ollama, LM Studio, llama.cpp, vLLM or a
+                gateway. No key is required for a local one. The model must support
+                tool calling, or the assistant can talk but cannot touch the board.
+              </div>
+            </>
+          ) : (
+            <Row label="Model">
+              <select
+                value={providers.settings.llmModel}
+                onChange={(e) => providers.update({ llmModel: e.target.value })}
+                style={selectStyle}
+              >
+                {(llm?.models ?? []).map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.label}
                   </option>
-                ),
-              )}
-            </select>
-          </Row>
+                ))}
+              </select>
+            </Row>
+          )}
           <Row label="Speech-to-text">
             <select
               value={providers.settings.sttProvider}
@@ -224,10 +350,10 @@ export default function Settings({ onClose }: { onClose: () => void }) {
             return (
               <div key={row.id} style={{ padding: "9px 0", borderBottom: "1px solid var(--border)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>{row.label}</span>
-                  <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{row.use}</span>
+                  <span style={{ fontSize: 14, fontWeight: 500 }}>{row.label}</span>
+                  <span style={{ fontSize: 12, color: "var(--text-faint)" }}>{row.use}</span>
                   {configured && (
-                    <span style={{ fontSize: 11, color: "var(--ok)", marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ fontSize: 12, color: "var(--ok)", marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4 }}>
                       <Icon name="check" size={12} /> stored
                     </span>
                   )}
@@ -246,7 +372,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
                       borderRadius: "var(--r-sm)",
                       padding: "6px 10px",
                       outline: "none",
-                      fontSize: 12,
+                      fontSize: 13,
                       fontFamily: "var(--font-mono)",
                     }}
                   />
@@ -256,7 +382,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
                     style={{
                       padding: "0 12px",
                       borderRadius: "var(--r-sm)",
-                      fontSize: 12,
+                      fontSize: 13,
                       background: drafts[row.id]?.trim() ? "var(--accent)" : "var(--surface-2)",
                       color: drafts[row.id]?.trim() ? "var(--on-accent)" : "var(--text-faint)",
                     }}
@@ -266,7 +392,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
                   {configured && (
                     <button
                       onClick={() => void remove(row.id)}
-                      style={{ padding: "0 10px", fontSize: 12, color: "var(--danger)" }}
+                      style={{ padding: "0 10px", fontSize: 13, color: "var(--danger)" }}
                     >
                       Remove
                     </button>
@@ -276,7 +402,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
                   href={row.keyUrl}
                   target="_blank"
                   rel="noreferrer"
-                  style={{ fontSize: 10, color: "var(--text-faint)", textDecoration: "none" }}
+                  style={{ fontSize: 11, color: "var(--text-faint)", textDecoration: "none" }}
                 >
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
                     Get a key <Icon name="external" size={10} />
@@ -287,11 +413,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
           })}
         </Section>
 
-        {error && (
-          <div className="selectable" style={{ color: "var(--danger)", fontSize: 12, marginTop: 12 }}>
-            {error}
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -302,7 +424,7 @@ const selectStyle: React.CSSProperties = {
   border: "1px solid var(--border)",
   borderRadius: "var(--r-sm)",
   padding: "5px 9px",
-  fontSize: 12,
+  fontSize: 13,
   outline: "none",
   minWidth: 200,
 };
@@ -312,9 +434,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <div style={{ marginBottom: 22 }}>
       <div
         style={{
-          fontSize: 11,
-          textTransform: "uppercase",
-          letterSpacing: 0.6,
+          fontSize: 12,
           color: "var(--text-faint)",
           marginBottom: 8,
         }}
@@ -329,7 +449,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", alignItems: "center", padding: "5px 0" }}>
-      <span style={{ fontSize: 13, flex: 1 }}>{label}</span>
+      <span style={{ fontSize: 14, flex: 1 }}>{label}</span>
       {children}
     </div>
   );

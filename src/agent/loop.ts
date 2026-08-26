@@ -56,7 +56,7 @@ export async function runTurn(
 ): Promise<TurnOutcome> {
   const provider = activeLLM();
   const { settings } = useProviders.getState();
-  const apiKey = await keyFor(provider.id);
+  const apiKey = await keyFor(provider.id, provider.keyOptional);
 
   const messages: Turn[] = [...history, { role: "user", text: userText }];
   const actions: string[] = [];

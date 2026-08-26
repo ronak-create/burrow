@@ -53,6 +53,17 @@ export interface LLMProvider {
   models: Array<{ id: string; label: string }>;
   /** Where the user gets a key, shown in settings. */
   keyUrl: string;
+  /**
+   * True when the provider can run without a key at all — a local server on
+   * loopback, typically. Such a provider is ready as soon as it is pointed at an
+   * endpoint, so the "is chat available" check must not look for a key.
+   */
+  keyOptional?: boolean;
+  /**
+   * True when the model is typed rather than chosen. Local runtimes serve whatever
+   * the user has pulled, so there is no list to enumerate.
+   */
+  freeformModel?: boolean;
   send(opts: SendOptions): Promise<LLMReply>;
 }
 

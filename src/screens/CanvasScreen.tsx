@@ -147,7 +147,7 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
     display: "grid",
     placeItems: "center",
     color: "var(--text-muted)",
-    fontSize: 14,
+    fontSize: 15,
   } as const;
 
   return (
@@ -167,12 +167,12 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
         <button onClick={() => void back()} style={iconBtn} title="Back to workspaces">
           <Icon name="back" />
         </button>
-        <span style={{ fontWeight: 600, fontSize: 14 }}>{ws.name}</span>
+        <span style={{ fontWeight: 600, fontSize: 15 }}>{ws.name}</span>
         {ws.tags.map((t) => (
           <span
             key={t}
             style={{
-              fontSize: 10,
+              fontSize: 11,
               padding: "2px 7px",
               borderRadius: 4,
               background: "var(--surface-2)",
@@ -203,7 +203,7 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
         <button onClick={() => zoomOut()} style={iconBtn} title="Zoom out">
           <Icon name="zoomOut" />
         </button>
-        <span style={{ fontSize: 11, color: "var(--text-muted)", width: 38, textAlign: "center" }}>
+        <span style={{ fontSize: 12, color: "var(--text-muted)", width: 38, textAlign: "center" }}>
           {Math.round(getZoom() * 100)}%
         </span>
         <button onClick={() => zoomIn()} style={iconBtn} title="Zoom in">
@@ -264,7 +264,7 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
                 }}
               >
                 <Icon name={m.icon} size={17} />
-                <span style={{ fontSize: 9 }}>{m.label}</span>
+                <span style={{ fontSize: 10 }}>{m.label}</span>
               </button>
             ))}
 
@@ -294,7 +294,7 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
                   <Icon name={t.icon} size={17} />
-                  <span style={{ fontSize: 10 }}>{t.label}</span>
+                  <span style={{ fontSize: 11 }}>{t.label}</span>
                 </button>
               );
             })}

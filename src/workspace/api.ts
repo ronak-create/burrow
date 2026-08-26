@@ -12,6 +12,8 @@ export interface WorkspaceMeta {
   tags: string[];
   createdAt: string;
   lastOpenedAt: string;
+  /** Pinned workspaces sort above everything else in the browser. */
+  pinned: boolean;
   /** Derived from board.json at list time, not stored in workspace.json. */
   blockCount: number;
 }
@@ -29,8 +31,12 @@ export const defaultWorkspacesRoot = () => invoke<string>("default_workspaces_ro
 export const listWorkspaces = (root: string) =>
   invoke<WorkspaceMeta[]>("list_workspaces", { root });
 
-export const createWorkspace = (root: string, name: string, tags: string[] = []) =>
-  invoke<WorkspaceMeta>("create_workspace", { root, name, tags });
+export const createWorkspace = (
+  root: string,
+  name: string,
+  tags: string[] = [],
+  pinned = false,
+) => invoke<WorkspaceMeta>("create_workspace", { root, name, tags, pinned });
 
 export const readWorkspace = (root: string, id: string) =>
   invoke<WorkspaceMeta>("read_workspace", { root, id });
@@ -38,13 +44,14 @@ export const readWorkspace = (root: string, id: string) =>
 export const updateWorkspaceMeta = (
   root: string,
   id: string,
-  opts: { name?: string; tags?: string[]; touch?: boolean } = {},
+  opts: { name?: string; tags?: string[]; pinned?: boolean; touch?: boolean } = {},
 ) =>
   invoke<WorkspaceMeta>("update_workspace_meta", {
     root,
     id,
     name: opts.name ?? null,
     tags: opts.tags ?? null,
+    pinned: opts.pinned ?? null,
     touch: opts.touch ?? false,
   });
 

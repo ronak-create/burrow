@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { runTurn, trimHistory } from "../agent/loop";
+import { toastError, toastWarn } from "../ui/toast";
 import { Recorder, speak, stopSpeaking, transcribe } from "../agent/voice";
 import { canChat, canSpeak, canTranscribe, useProviders } from "../providers/registry";
 import type { Turn } from "../providers/types";
@@ -22,7 +23,6 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
   const [lines, setLines] = useState<Line[]>([]);
   const [input, setInput] = useState("");
   const [status, setStatus] = useState<Status>("idle");
-  const [error, setError] = useState<string | null>(null);
 
   const providers = useProviders();
   const history = useRef<Turn[]>([]);
@@ -59,8 +59,6 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
   async function send(text: string) {
     const trimmed = text.trim();
     if (!trimmed || busy) return;
-
-    setError(null);
     setInput("");
     setLines((l) => [...l, { role: "user", text: trimmed }]);
     void appendTranscript(root, wsId, { role: "user", text: trimmed, at: new Date().toISOString() });
@@ -88,7 +86,7 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
         await speak(outcome.reply);
       }
     } catch (e) {
-      setError(String(e instanceof Error ? e.message : e));
+      toastError(e);
     } finally {
       setStatus("idle");
     }
@@ -96,13 +94,12 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
 
   async function beginListening() {
     if (busy || !micReady) return;
-    setError(null);
     void stopSpeaking();
     try {
       await recorder.current.start();
       setStatus("listening");
     } catch (e) {
-      setError(String(e instanceof Error ? e.message : e));
+      toastError(e);
       setStatus("idle");
     }
   }
@@ -119,12 +116,12 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
       const text = await transcribe(captured.blob, captured.mimeType);
       if (!text) {
         setStatus("idle");
-        setError("Nothing was picked up. Try again a little closer to the mic.");
+        toastWarn("Nothing was picked up. Try again a little closer to the mic.");
         return;
       }
       await send(text);
     } catch (e) {
-      setError(String(e instanceof Error ? e.message : e));
+      toastError(e);
       setStatus("idle");
     }
   }
@@ -153,8 +150,8 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <StatusOrb status={status} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>Research Assistant</div>
-            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{statusLabel[status]}</div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>Research Assistant</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{statusLabel[status]}</div>
           </div>
           <button
             title={providers.settings.voiceReplies ? "Mute spoken replies" : "Speak replies aloud"}
@@ -185,7 +182,7 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
             padding: "9px 0",
             borderRadius: "var(--r-md)",
             fontWeight: 500,
-            fontSize: 13,
+            fontSize: 14,
             // White only over a filled accent/danger background. When the button is
             // disabled its background is a pale surface, where white is invisible in
             // the light theme.
@@ -207,7 +204,7 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
 
       <div ref={scroller} style={{ flex: 1, overflowY: "auto", padding: 14, minHeight: 0 }}>
         {lines.length === 0 && (
-          <p style={{ color: "var(--text-faint)", fontSize: 12, lineHeight: 1.6 }}>
+          <p style={{ color: "var(--text-faint)", fontSize: 13, lineHeight: 1.6 }}>
             Ask for a note, a summary, or a frame around related findings. The assistant only writes
             to the board when you ask it to.
           </p>
@@ -223,7 +220,7 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
                 color: line.role === "user" ? "var(--on-accent)" : "var(--text)",
                 borderRadius: "var(--r-md)",
                 padding: "9px 12px",
-                fontSize: 13,
+                fontSize: 14,
                 lineHeight: 1.5,
                 marginLeft: line.role === "user" ? 28 : 0,
                 marginRight: line.role === "user" ? 0 : 28,
@@ -235,7 +232,7 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
             {line.actions?.map((a, j) => (
               <div
                 key={j}
-                style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 4, marginLeft: 4 }}
+                style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 4, marginLeft: 4 }}
               >
                 <Icon name="draw" size={10} style={{ display: "inline-block", verticalAlign: -1, marginRight: 4 }} />
                 {a}
@@ -244,21 +241,6 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
           </div>
         ))}
 
-        {error && (
-          <div
-            className="selectable"
-            style={{
-              background: "var(--danger-wash)",
-              border: "1px solid var(--danger-line)",
-              color: "var(--danger)",
-              borderRadius: "var(--r-md)",
-              padding: "8px 11px",
-              fontSize: 12,
-            }}
-          >
-            {error}
-          </div>
-        )}
       </div>
 
       <div style={{ padding: 12, borderTop: "1px solid var(--border)", display: "flex", gap: 6 }}>
@@ -275,7 +257,7 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
             borderRadius: "var(--r-md)",
             padding: "8px 12px",
             outline: "none",
-            fontSize: 13,
+            fontSize: 14,
             opacity: chatReady ? 1 : 0.6,
           }}
         />
