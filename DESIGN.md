@@ -139,3 +139,93 @@ Run against Tauri v2 / WebView2 `Edg/151` on Windows 11. Every item below was te
 Despite the name, `--use-fake-ui-for-media-stream` fakes only the *permission prompt* (auto-granting it) — not the device. Confirmed by capturing 18–19 KB of real Opus audio from a real `Realtek(R) Audio` microphone array. The device-faking flag is the different `--use-fake-device-for-media-stream`. Note this auto-grants media permission app-wide, which is acceptable here because the app is the only thing loaded in the webview and it is the user's own machine — but it should not be carried into any build that loads third-party web content.
 
 **Correction to Section D:** the Web Speech API cannot serve as the zero-key STT under Tauri. `SpeechRecognition` is a Chromium feature backed by Google's cloud service and is absent from WebView2/WKWebView. Speech *synthesis* is a separate API and was tested independently — it is present but exposes no voices, so it is unusable too. The zero-key path is therefore local Whisper (STT, M2) plus the Rust `tts` crate (TTS, working now).
+
+---
+
+## Build Log — Milestone 2 (Aug 2026)
+
+Decisions made while building, recorded because the reasoning is not recoverable
+from the diff.
+
+### The agent loop was never real until it was
+
+M1 shipped the loop unexercised. Running it revealed two faults, both from
+adapters written against an older model generation: `max_tokens` was 2048 with no
+`thinking` config, but on current models thinking is on by default and shares
+that budget, so replies truncated; and `stop_reason: "refusal"` arrives as an
+HTTP 200 with empty content, which the loop read as a normal end of turn and
+reported as silence. Neither would have surfaced from tests.
+
+### Providers are a factory, not a file each
+
+`openai.ts` exports `openAICompatible({url, models})`. OpenAI, Groq, Cerebras and
+the user-configured endpoint are all configuration over it. The custom provider
+resolves its URL **per request**, so editing it in Settings takes effect on the
+next turn without a restart, and it omits the `Authorization` header entirely
+when there is no key — some local servers reject an empty bearer.
+
+### Local by default
+
+A fresh install points at `http://127.0.0.1:11434/v1` with a blank model. The
+BYOK posture only means something if the app can reason without the user paying
+anyone first. Verified against Ollama serving an 8B model, which handled
+multi-step tool calling including two calls in one turn.
+
+**The HTTP capability is an allowlist**, and this was nearly a silent failure: the
+custom provider was tested through curl and would have been blocked in-app,
+because neither loopback nor the user's endpoint was on the list. Any HTTPS host
+is now permitted, since the custom endpoint is one the user types and the list
+cannot know it in advance. Plain HTTP stays restricted to loopback, so a mistyped
+endpoint cannot quietly ship a prompt somewhere unencrypted.
+
+### Layout is derived, never stored
+
+Diagrams take `{nodes, edges}` and compute positions here. That keeps the model's
+job to describing structure rather than doing arithmetic about pixels — which
+models are bad at, and which would be wrong the moment the card is resized. Depth
+assignment is longest-path with a bounded pass count rather than a topological
+sort, because hand-drawn research diagrams contain cycles and a topological sort
+simply fails on one. Confirmed immediately: asked for a request flow, the model
+returned `api -> cache -> api`.
+
+### Tools were validated against the smallest model available
+
+A schema an 8B local model can follow is a schema any model can follow. Both new
+block tools were checked that way. Neither handler trusts the result: table rows
+are normalised to the column count rather than rejected, and diagram edges
+referencing unknown node ids are dropped with a count reported back — a dangling
+edge renders as nothing and would otherwise read as a silent failure.
+
+### Partial failure has to be visible
+
+Paper search fans out across four indexes with `allSettled`, not `all`. Semantic
+Scholar answered 429 on the first live check, since its unauthenticated pool
+rate-limits hard. Which sources failed is reported in the tool result, because a
+thin result set that silently omits two indexes reads to a model as "little has
+been written on this" rather than "two indexes were unreachable". The same
+principle governs document reads: truncation is disclosed in the result so the
+assistant reports a partial read rather than summarising a fraction as the whole.
+
+### Two bugs worth remembering
+
+**The tutorial seeded twice.** `StrictMode` double-invokes effects, and the
+`localStorage` guard was only written *after* the create round-tripped to disk —
+so both calls read "not seeded" eleven milliseconds apart. A flag written after
+an await is not a guard. Fixed with a shared in-flight promise.
+
+**Notes could not be deleted.** Delete and Backspace are React Flow's delete
+keys, but a note is almost entirely text inputs, so the key landed in a field and
+edited text. Cards with less text surface were deletable and notes were not,
+which read as notes being undeletable rather than as a focus problem. Every block
+now carries an explicit delete control, independent of where focus happens to be.
+
+### Deliberately not done
+
+- **Wake word.** Needs a dedicated engine (Porcupine, or local Whisper running
+  continuously). Voice is hold-to-talk until one exists; a half-built
+  always-listening feature is worse than none.
+- **Local speech-to-text.** The zero-key path is whisper.cpp, which means
+  shipping a binary and a model file. Not bundled.
+- **Image generation.** Spec H, not started.
+- **Google Scholar.** No official API; scraping violates its terms. Users import
+  Scholar-only material as a document instead.
