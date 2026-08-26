@@ -35,6 +35,73 @@ export const TOOLS: ToolSpec[] = [
     },
   },
   {
+    name: "add_table",
+    description:
+      "Put a comparison table on the board — the right block whenever the user is weighing options " +
+      "against shared criteria. Rows must have exactly one cell per column. This is not a " +
+      "spreadsheet: no formulas, no computed columns.",
+    parameters: {
+      type: "object",
+      properties: {
+        title: str("Short heading, e.g. Redis vs Memcached."),
+        columns: {
+          type: "array",
+          items: { type: "string" },
+          description: "Column headers. The first is usually the criterion being compared.",
+        },
+        rows: {
+          type: "array",
+          items: { type: "array", items: { type: "string" } },
+          description: "Each row is one array of cell strings, same length as columns.",
+        },
+        x: num("Optional canvas x. Omit to auto-place."),
+        y: num("Optional canvas y. Omit to auto-place."),
+      },
+      required: ["title", "columns", "rows"],
+    },
+  },
+  {
+    name: "add_diagram",
+    description:
+      "Put a node-and-edge diagram on the board — architectures, pipelines, request flows. " +
+      "Describe structure only: layout is computed here, so never reason about coordinates. " +
+      "Edges reference node ids, not labels.",
+    parameters: {
+      type: "object",
+      properties: {
+        title: str("Short heading, e.g. Write path."),
+        nodes: {
+          type: "array",
+          description: "The boxes.",
+          items: {
+            type: "object",
+            properties: {
+              id: str("Short stable id used by edges, e.g. api."),
+              label: str("What is shown in the box. Keep it under about 16 characters."),
+            },
+            required: ["id", "label"],
+          },
+        },
+        edges: {
+          type: "array",
+          description: "Arrows between nodes. Direction is from -> to.",
+          items: {
+            type: "object",
+            properties: {
+              from: str("Source node id."),
+              to: str("Target node id."),
+              label: str("Optional text on the arrow."),
+            },
+            required: ["from", "to"],
+          },
+        },
+        x: num("Optional canvas x. Omit to auto-place."),
+        y: num("Optional canvas y. Omit to auto-place."),
+      },
+      required: ["title", "nodes"],
+    },
+  },
+  {
     name: "add_frame",
     description:
       "Draw a labelled frame to group related blocks. If the board already has the user's work on " +
@@ -163,6 +230,87 @@ export async function runTool(call: ToolCall): Promise<ToolResult> {
           } as Block,
         });
         return ok(call.id, `Added note "${a.title}" (id ${id}) at ${Math.round(pos.x)},${Math.round(pos.y)}.`);
+      }
+
+      case "add_table": {
+        const columns = (Array.isArray(a.columns) ? a.columns : []).map(String);
+        if (columns.length === 0) return fail(call.id, "A table needs at least one column.");
+        // Normalise every row to the column count rather than rejecting a ragged
+        // one — a model that miscounts should still get a usable table back.
+        const rows = (Array.isArray(a.rows) ? a.rows : []).map((r) => {
+          const cells = (Array.isArray(r) ? r : []).map(String);
+          return columns.map((_, i) => cells[i] ?? "");
+        });
+
+        const size = DEFAULT_SIZE.table;
+        const explicit = typeof a.x === "number" && typeof a.y === "number";
+        const pos = explicit
+          ? { x: a.x as number, y: a.y as number }
+          : findFreeSpot(board, size, anchor());
+        const id = `table-${nanoid(8)}`;
+        run({
+          t: "addBlock",
+          block: {
+            id,
+            type: "table",
+            position: pos,
+            width: size.width,
+            height: size.height,
+            zIndex: 1,
+            data: { title: String(a.title ?? ""), columns, rows },
+          } as Block,
+        });
+        return ok(
+          call.id,
+          `Added table "${a.title}" (id ${id}) with ${columns.length} columns and ${rows.length} rows.`,
+        );
+      }
+
+      case "add_diagram": {
+        const rawNodes = Array.isArray(a.nodes) ? a.nodes : [];
+        const nodes = rawNodes
+          .map((n) => n as { id?: unknown; label?: unknown })
+          .filter((n) => n && n.id !== undefined)
+          .map((n) => ({ id: String(n.id), label: String(n.label ?? n.id) }));
+        if (nodes.length === 0) return fail(call.id, "A diagram needs at least one node.");
+
+        const known = new Set(nodes.map((n) => n.id));
+        const rawEdges = Array.isArray(a.edges) ? a.edges : [];
+        const edges = rawEdges
+          .map((e) => e as { from?: unknown; to?: unknown; label?: unknown })
+          .filter((e) => e && known.has(String(e.from)) && known.has(String(e.to)))
+          .map((e) => ({
+            from: String(e.from),
+            to: String(e.to),
+            ...(e.label !== undefined ? { label: String(e.label) } : {}),
+          }));
+        // Dangling edges would render as nothing, which reads as a silent failure;
+        // say so instead, so the model can correct the ids on a later turn.
+        const dropped = rawEdges.length - edges.length;
+
+        const size = DEFAULT_SIZE.diagram;
+        const explicit = typeof a.x === "number" && typeof a.y === "number";
+        const pos = explicit
+          ? { x: a.x as number, y: a.y as number }
+          : findFreeSpot(board, size, anchor());
+        const id = `diagram-${nanoid(8)}`;
+        run({
+          t: "addBlock",
+          block: {
+            id,
+            type: "diagram",
+            position: pos,
+            width: size.width,
+            height: size.height,
+            zIndex: 1,
+            data: { title: String(a.title ?? ""), nodes, edges },
+          } as Block,
+        });
+        return ok(
+          call.id,
+          `Added diagram "${a.title}" (id ${id}) with ${nodes.length} nodes and ${edges.length} edges.` +
+            (dropped > 0 ? ` Dropped ${dropped} edge(s) referencing unknown node ids.` : ""),
+        );
       }
 
       case "add_frame": {

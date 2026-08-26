@@ -15,7 +15,7 @@ import { useAutosave, saveNow } from "../workspace/persist";
 import type { WorkspaceMeta } from "../workspace/api";
 
 /** Only these two ship in M1; the rest are visible but inert so the shape of the tool is legible. */
-const ENABLED: BlockKind[] = ["note", "text", "shape", "frame"];
+const ENABLED: BlockKind[] = ["note", "text", "shape", "frame", "table", "diagram"];
 
 /** Which shape variant the toolbar's shape buttons create. */
 type ToolSpec = { kind: BlockKind; label: string; icon: IconName; variant?: "rectangle" | "ellipse" };

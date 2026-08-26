@@ -18,6 +18,8 @@ import NoteBlockView from "./blocks/NoteBlock";
 import FrameBlockView from "./blocks/FrameBlock";
 import ShapeBlockView from "./blocks/ShapeBlock";
 import TextBlockView from "./blocks/TextBlock";
+import TableBlockView from "./blocks/TableBlock";
+import DiagramBlockView from "./blocks/DiagramBlock";
 import FloatingEdge from "./edges/FloatingEdge";
 import InkLayer from "./ink/InkLayer";
 import { useCanvasMode } from "./ink/mode";
@@ -38,6 +40,8 @@ const nodeTypes = {
   frame: FrameBlockView,
   shape: ShapeBlockView,
   text: TextBlockView,
+  table: TableBlockView,
+  diagram: DiagramBlockView,
 };
 
 // `default` is overridden too, so edges loaded from disk without an explicit type
