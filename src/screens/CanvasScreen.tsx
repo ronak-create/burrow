@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
-import { nanoid } from "nanoid";
 
 import Board from "../canvas/Board";
 import AssistantPanel from "./AssistantPanel";
@@ -9,13 +8,23 @@ import { useCanvasMode, type CanvasMode } from "../canvas/ink/mode";
 import { Icon, type IconName } from "../ui/icons";
 import { INK_COLORS, INK_SIZES, inkColor } from "../canvas/ink/stroke";
 import { useBoard } from "../canvas/store";
-import { findFreeSpot } from "../canvas/placement";
-import { DEFAULT_SIZE, type Block, type BlockKind } from "../canvas/types";
+import { type BlockKind } from "../canvas/types";
 import { useAutosave, saveNow } from "../workspace/persist";
+import { useCurrentWorkspace } from "../workspace/current";
+import DocumentViewer from "./DocumentViewer";
 import type { WorkspaceMeta } from "../workspace/api";
 
-/** Only these two ship in M1; the rest are visible but inert so the shape of the tool is legible. */
-const ENABLED: BlockKind[] = ["note", "text", "shape", "frame", "table", "diagram"];
+/** Every block kind the toolbar can draw. */
+const ENABLED: BlockKind[] = [
+  "note",
+  "text",
+  "shape",
+  "frame",
+  "table",
+  "diagram",
+  "doc",
+  "image",
+];
 
 /** Which shape variant the toolbar's shape buttons create. */
 type ToolSpec = { kind: BlockKind; label: string; icon: IconName; variant?: "rectangle" | "ellipse" };
@@ -38,67 +47,36 @@ const TOOLS: ToolSpec[] = [
   { kind: "image", label: "Image", icon: "image" },
 ];
 
-function newBlockData(kind: BlockKind, variant?: "rectangle" | "ellipse", color?: string) {
-  switch (kind) {
-    case "shape":
-      return { variant: variant ?? "rectangle", color: color ?? "slate" };
-    case "text":
-      return { text: "" };
-    case "note":
-      return { title: "", body: "" };
-    case "frame":
-      return { label: "" };
-    case "table":
-      return { title: "", columns: ["Column A", "Column B"], rows: [["", ""]] };
-    case "diagram":
-      return { title: "", nodes: [], edges: [] };
-    case "doc":
-      return { title: "", file: "" };
-    case "image":
-      return { title: "", file: "" };
-  }
-}
-
 function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; onBack: () => void }) {
-  const run = useBoard((s) => s.run);
   const undo = useBoard((s) => s.undo);
   const redo = useBoard((s) => s.redo);
   const dirty = useBoard((s) => s.dirty);
   const past = useBoard((s) => s.past.length);
-  const { screenToFlowPosition, zoomIn, zoomOut, fitView, getZoom } = useReactFlow();
+  const { zoomIn, zoomOut, fitView, getZoom } = useReactFlow();
   const [showSettings, setShowSettings] = useState(false);
   const [showPanel, setShowPanel] = useState(true);
   const mode = useCanvasMode((s) => s.mode);
   const setMode = useCanvasMode((s) => s.setMode);
-  // New shapes pick up the current ink colour, so the pen and the shape tools
-  // feel like one set of drawing tools rather than two.
-  const inkStrokeColor = useCanvasMode((s) => s.color);
+  const pending = useCanvasMode((s) => s.pending);
 
   useAutosave(root, ws.id);
 
+  // Publish the open workspace so doc and image blocks can resolve their files.
+  const setCurrent = useCurrentWorkspace((s) => s.set);
+  const clearCurrent = useCurrentWorkspace((s) => s.clear);
+  useEffect(() => {
+    setCurrent(root, ws.id);
+    return clearCurrent;
+  }, [root, ws.id, setCurrent, clearCurrent]);
+
+  /**
+   * Arm a tool. Nothing is created here — PlaceLayer creates the block where the
+   * user actually clicks or drags, which is the only place they can have meant.
+   */
+  const arm = useCanvasMode((m) => m.arm);
   const addBlock = useCallback(
-    (kind: BlockKind, variant?: "rectangle" | "ellipse") => {
-      // Drop new blocks at the centre of what the user is currently looking at,
-      // shifted to free space so nothing lands on top of existing work.
-      const centre = screenToFlowPosition({
-        x: window.innerWidth / 2,
-        y: window.innerHeight / 2,
-      });
-      const size = DEFAULT_SIZE[kind];
-      const position = findFreeSpot(useBoard.getState().board, size, centre);
-      const block = {
-        id: `${kind}-${nanoid(8)}`,
-        type: kind,
-        position,
-        width: size.width,
-        height: size.height,
-        // Frames sit behind everything so they read as backdrops, not cards.
-        zIndex: kind === "frame" ? 0 : 1,
-        data: newBlockData(kind, variant, inkStrokeColor),
-      } as Block;
-      run({ t: "addBlock", block }, "user");
-    },
-    [run, screenToFlowPosition, inkStrokeColor],
+    (kind: BlockKind, variant?: "rectangle" | "ellipse") => arm({ kind, variant }),
+    [arm],
   );
 
   useEffect(() => {
@@ -272,12 +250,22 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
 
             {TOOLS.map((t) => {
               const on = ENABLED.includes(t.kind);
+              // An armed tool has to look armed: the click no longer produces a
+              // block, so without this the toolbar gives no sign anything happened.
+              const armed =
+                mode === "place" &&
+                pending?.kind === t.kind &&
+                pending?.variant === t.variant;
               return (
                 <button
                   key={`${t.kind}:${t.variant ?? ""}`}
                   disabled={!on}
                   onClick={() => addBlock(t.kind, t.variant)}
-                  title={on ? `Add ${t.label}` : `${t.label} — coming in a later milestone`}
+                  title={
+                    on
+                      ? `${t.label} — click or drag on the canvas to draw one`
+                      : `${t.label} — coming in a later milestone`
+                  }
                   style={{
                     width: 56,
                     padding: "7px 0",
@@ -286,12 +274,17 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
                     flexDirection: "column",
                     alignItems: "center",
                     gap: 3,
-                    color: on ? "var(--text)" : "var(--text-faint)",
+                    background: armed ? "var(--accent-wash)" : "transparent",
+                    color: armed ? "var(--accent)" : on ? "var(--text)" : "var(--text-faint)",
                     cursor: on ? "pointer" : "not-allowed",
                     opacity: on ? 1 : 0.45,
                   }}
-                  onMouseEnter={(e) => on && (e.currentTarget.style.background = "var(--card-hover)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  onMouseEnter={(e) =>
+                    on && !armed && (e.currentTarget.style.background = "var(--card-hover)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = armed ? "var(--accent-wash)" : "transparent")
+                  }
                 >
                   <Icon name={t.icon} size={17} />
                   <span style={{ fontSize: 11 }}>{t.label}</span>
@@ -305,6 +298,7 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
       </div>
 
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+      <DocumentViewer />
     </div>
   );
 }

@@ -23,6 +23,7 @@ export default function InkLayer() {
   const run = useBoard((s) => s.run);
   const { screenToFlowPosition } = useReactFlow();
   const { mode, color, size } = useCanvasMode();
+  const penMode = mode === "draw" || mode === "erase";
 
   const [live, setLive] = useState<Array<[number, number, number]> | null>(null);
   const drawing = useRef(false);
@@ -53,7 +54,7 @@ export default function InkLayer() {
   );
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (mode === "select" || e.button !== 0) return;
+    if (!penMode || e.button !== 0) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     drawing.current = true;
 
@@ -96,7 +97,9 @@ export default function InkLayer() {
     run({ t: "addInk", stroke }, "user");
   };
 
-  const active = mode !== "select";
+  // Only a pen owns the pointer. "place" is another non-select mode, but it has
+  // its own capture surface, and two overlapping ones would fight for the drag.
+  const active = penMode;
 
   return (
     <>

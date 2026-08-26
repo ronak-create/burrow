@@ -5,6 +5,8 @@ import { useBoard } from "../canvas/store";
 import { boardCentre, boundsOf, findFreeSpot } from "../canvas/placement";
 import { isSparse } from "../canvas/serialize";
 import { DEFAULT_SIZE, type Block, type XY } from "../canvas/types";
+import { useCurrentWorkspace } from "../workspace/current";
+import { listDocuments, readDocumentText } from "../workspace/api";
 
 /**
  * The assistant's vocabulary.
@@ -13,6 +15,14 @@ import { DEFAULT_SIZE, type Block, type XY } from "../canvas/types";
  * what keeps agent edits and user edits on one undo stack and stops the two from
  * drifting apart. Tools never touch the board directly.
  */
+
+/**
+ * How much of a document goes into one tool result.
+ *
+ * Roughly 30k tokens of English. Large enough for a normal paper, small enough
+ * that a 300-page PDF cannot evict the conversation and the board state around it.
+ */
+const DOC_CHAR_LIMIT = 120_000;
 
 const num = (d: string) => ({ type: "number", description: d });
 const str = (d: string) => ({ type: "string", description: d });
@@ -99,6 +109,28 @@ export const TOOLS: ToolSpec[] = [
         y: num("Optional canvas y. Omit to auto-place."),
       },
       required: ["title", "nodes"],
+    },
+  },
+  {
+    name: "list_documents",
+    description:
+      "List the documents the user has imported into this workspace. Call this before answering " +
+      "anything that might depend on their own material — you cannot see the documents folder " +
+      "otherwise, and guessing at a paper you have not read is worse than asking.",
+    parameters: { type: "object", properties: {} },
+  },
+  {
+    name: "read_document",
+    description:
+      "Read an imported document's full text. Use the exact file name from list_documents. " +
+      "Long documents are truncated, and you are told when that happens — say so rather than " +
+      "implying you read the whole thing.",
+    parameters: {
+      type: "object",
+      properties: {
+        file: str("File name exactly as returned by list_documents, e.g. paper.pdf."),
+      },
+      required: ["file"],
     },
   },
   {
@@ -311,6 +343,46 @@ export async function runTool(call: ToolCall): Promise<ToolResult> {
           `Added diagram "${a.title}" (id ${id}) with ${nodes.length} nodes and ${edges.length} edges.` +
             (dropped > 0 ? ` Dropped ${dropped} edge(s) referencing unknown node ids.` : ""),
         );
+      }
+
+      case "list_documents": {
+        const { root, id: wsId } = useCurrentWorkspace.getState();
+        if (!root || !wsId) return fail(call.id, "No workspace is open.");
+        const docs = await listDocuments(root, wsId);
+        if (docs.length === 0) {
+          return ok(call.id, "No documents have been imported into this workspace yet.");
+        }
+        return ok(
+          call.id,
+          docs.map((d) => `${d.file} (${d.kind || "unknown"}, ${Math.round(d.sizeBytes / 1024)} KB)`).join("\n"),
+        );
+      }
+
+      case "read_document": {
+        const { root, id: wsId } = useCurrentWorkspace.getState();
+        if (!root || !wsId) return fail(call.id, "No workspace is open.");
+        const file = String(a.file ?? "");
+        if (!file) return fail(call.id, "Which document? Pass a file name from list_documents.");
+
+        const text = await readDocumentText(root, wsId, file);
+        if (!text.trim()) {
+          return fail(
+            call.id,
+            `${file} has no extractable text — it may be a scanned PDF, which would need OCR.`,
+          );
+        }
+        // Spec G puts whole documents in context, but one oversized paper should
+        // not evict the rest of the conversation. Truncation is disclosed in the
+        // result so the model can tell the user rather than quietly summarising a
+        // fraction as though it were the whole.
+        if (text.length > DOC_CHAR_LIMIT) {
+          return ok(
+            call.id,
+            `${text.slice(0, DOC_CHAR_LIMIT)}\n\n[Truncated: showing the first ${DOC_CHAR_LIMIT} of ` +
+              `${text.length} characters of ${file}. Tell the user this is a partial read.]`,
+          );
+        }
+        return ok(call.id, text);
       }
 
       case "add_frame": {

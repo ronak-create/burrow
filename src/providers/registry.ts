@@ -32,6 +32,14 @@ export interface Settings {
   sttProvider: string;
   /** Base URL for the "Custom / Local" provider, e.g. an Ollama server. */
   customBaseUrl: string;
+  /** Canvas backdrop pattern. */
+  canvasPattern: "dots" | "grid" | "plain";
+  /**
+   * Canvas backdrop shade, 0–100, interpolated between the theme's page colour and
+   * its card colour. A number rather than a colour so it stays theme-aware — a
+   * fixed hex chosen in dark mode would be wrong in light mode.
+   */
+  canvasShade: number;
   /** Speak assistant replies aloud. */
   voiceReplies: boolean;
 }
@@ -45,6 +53,8 @@ const DEFAULTS: Settings = {
   llmModel: "",
   sttProvider: "groq",
   customBaseUrl: "http://127.0.0.1:11434/v1",
+  canvasPattern: "dots",
+  canvasShade: 0,
   voiceReplies: true,
 };
 

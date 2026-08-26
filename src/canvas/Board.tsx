@@ -20,8 +20,12 @@ import ShapeBlockView from "./blocks/ShapeBlock";
 import TextBlockView from "./blocks/TextBlock";
 import TableBlockView from "./blocks/TableBlock";
 import DiagramBlockView from "./blocks/DiagramBlock";
+import DocBlockView from "./blocks/DocBlock";
+import ImageBlockView from "./blocks/ImageBlock";
 import FloatingEdge from "./edges/FloatingEdge";
 import InkLayer from "./ink/InkLayer";
+import PlaceLayer from "./PlaceLayer";
+import { useProviders } from "../providers/registry";
 import { useCanvasMode } from "./ink/mode";
 import type { Command } from "./commands";
 import { useBoard } from "./store";
@@ -42,6 +46,8 @@ const nodeTypes = {
   text: TextBlockView,
   table: TableBlockView,
   diagram: DiagramBlockView,
+  doc: DocBlockView,
+  image: ImageBlockView,
 };
 
 // `default` is overridden too, so edges loaded from disk without an explicit type
@@ -266,6 +272,12 @@ export default function Board() {
   // stroke turns into a pan or an accidental node drag.
   const penActive = useCanvasMode((s) => s.mode !== "select");
 
+  const pattern = useProviders((s) => s.settings.canvasPattern);
+  const shade = useProviders((s) => s.settings.canvasShade);
+  // colour-mix keeps the backdrop on the theme's own ramp, so the same setting
+  // reads correctly in dark and light without storing two values.
+  const canvasBg = `color-mix(in srgb, var(--card) ${shade}%, var(--bg))`;
+
   return (
     <ReactFlow
       nodes={board.nodes as RFNode[]}
@@ -298,10 +310,18 @@ export default function Board() {
       deleteKeyCode={["Delete", "Backspace"]}
       multiSelectionKeyCode={["Meta", "Control", "Shift"]}
       proOptions={{ hideAttribution: true }}
-      style={{ background: "var(--bg)" }}
+      style={{ background: canvasBg }}
     >
-      <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="var(--canvas-dot)" />
+      {pattern !== "plain" && (
+        <Background
+          variant={pattern === "grid" ? BackgroundVariant.Lines : BackgroundVariant.Dots}
+          gap={22}
+          size={1}
+          color="var(--canvas-dot)"
+        />
+      )}
       <InkLayer />
+      <PlaceLayer />
     </ReactFlow>
   );
 }

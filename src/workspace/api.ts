@@ -83,3 +83,34 @@ export const deleteApiKey = (provider: string) => invoke<void>("delete_api_key",
 
 export const configuredProviders = (providers: string[]) =>
   invoke<string[]>("configured_providers", { providers });
+
+/* ---------- documents and images (spec G) ---------- */
+
+export interface DocumentInfo {
+  /** Filename relative to the workspace's documents/ or images/ folder. */
+  file: string;
+  sizeBytes: number;
+  /** Lowercased extension without the dot. Empty when there is none. */
+  kind: string;
+}
+
+/** Copy a file into <workspace>/documents/. Returns the name it landed under. */
+export const importDocument = (root: string, id: string, source: string) =>
+  invoke<DocumentInfo>("import_document", { root, id, source });
+
+/** Copy a file into <workspace>/images/. */
+export const importImage = (root: string, id: string, source: string) =>
+  invoke<DocumentInfo>("import_image", { root, id, source });
+
+export const listDocuments = (root: string, id: string) =>
+  invoke<DocumentInfo[]>("list_documents", { root, id });
+
+/** Extracted plain text — what the reader shows and what the assistant is given. */
+export const readDocumentText = (root: string, id: string, file: string) =>
+  invoke<string>("read_document_text", { root, id, file });
+
+export const readImageDataUrl = (root: string, id: string, file: string) =>
+  invoke<string>("read_image_data_url", { root, id, file });
+
+export const deleteDocument = (root: string, id: string, file: string) =>
+  invoke<void>("delete_document", { root, id, file });

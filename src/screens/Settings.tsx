@@ -215,6 +215,60 @@ export default function Settings({ onClose }: { onClose: () => void }) {
             Monochrome keeps the interface black and white. Any other choice tints
             selection, active state and primary buttons only.
           </div>
+
+          <Row label="Canvas">
+            <div style={{ display: "flex", gap: 4 }}>
+              {(["dots", "grid", "plain"] as const).map((p) => {
+                const on = providers.settings.canvasPattern === p;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => providers.update({ canvasPattern: p })}
+                    style={{
+                      padding: "5px 12px",
+                      borderRadius: "var(--r-sm)",
+                      fontSize: 13,
+                      textTransform: "capitalize",
+                      border: `1px solid ${on ? "var(--accent-line)" : "var(--border)"}`,
+                      background: on ? "var(--accent-wash)" : "transparent",
+                      color: on ? "var(--accent)" : "var(--text-muted)",
+                    }}
+                  >
+                    {p}
+                  </button>
+                );
+              })}
+            </div>
+          </Row>
+
+          <Row label="Canvas shade">
+            <span style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={providers.settings.canvasShade}
+                onChange={(e) => providers.update({ canvasShade: Number(e.target.value) })}
+                style={{ flex: 1, accentColor: "var(--accent)" }}
+              />
+              <span
+                style={{
+                  fontSize: 12,
+                  color: "var(--text-faint)",
+                  width: 34,
+                  textAlign: "right",
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
+                {providers.settings.canvasShade}%
+              </span>
+            </span>
+          </Row>
+          <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
+            Lifts the board off the page background. Stored as a position on the
+            theme's own ramp, so it stays correct in both light and dark.
+          </div>
         </Section>
 
         <Section title="What's working">

@@ -1,3 +1,4 @@
+mod documents;
 mod keys;
 mod speech;
 mod workspace;
@@ -30,6 +31,12 @@ pub fn run() {
             workspace::append_transcript,
             workspace::read_transcript,
             workspace::delete_workspace,
+            documents::import_document,
+            documents::import_image,
+            documents::list_documents,
+            documents::read_document_text,
+            documents::read_image_data_url,
+            documents::delete_document,
             keys::set_api_key,
             keys::get_api_key,
             keys::has_api_key,

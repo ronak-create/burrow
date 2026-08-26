@@ -1,5 +1,6 @@
 import { useCallback, useRef, type CSSProperties, type ReactNode } from "react";
 import { useBoard } from "../store";
+import { Icon } from "../../ui/icons";
 
 /**
  * Shared chrome and editing behaviour for every block type.
@@ -124,6 +125,52 @@ export function MarkerPin({ id }: { id: string }) {
   );
 }
 
+/**
+ * Delete, shown on the selected block.
+ *
+ * Delete and Backspace are React Flow's delete keys, but a note is almost
+ * entirely text inputs — so the key lands in a field and edits text instead of
+ * removing the node, and there is nowhere on the card to click that selects
+ * without focusing something. Cards with less text surface were deletable and
+ * notes were not, which read as notes being undeletable. An explicit control is
+ * uniform across every block type and does not depend on where focus happens to
+ * be.
+ */
+function DeleteButton({ id }: { id: string }) {
+  const run = useBoard((s) => s.run);
+  return (
+    <button
+      className={NODRAG}
+      title="Delete block"
+      aria-label="Delete block"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        // Through the command layer, so it lands on the shared undo stack and
+        // takes the block's edges with it.
+        run({ t: "removeBlock", id }, "user");
+      }}
+      style={{
+        position: "absolute",
+        top: -10,
+        right: -10,
+        zIndex: 6,
+        display: "grid",
+        placeItems: "center",
+        width: 20,
+        height: 20,
+        borderRadius: 99,
+        background: "var(--surface)",
+        border: "1px solid var(--border-strong)",
+        color: "var(--text-muted)",
+        boxShadow: "var(--shadow-card)",
+      }}
+    >
+      <Icon name="close" size={12} />
+    </button>
+  );
+}
+
 export function BlockShell({
   selected,
   marker,
@@ -138,6 +185,7 @@ export function BlockShell({
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       {marker ? <MarkerPin id={id} /> : null}
+      {selected ? <DeleteButton id={id} /> : null}
       <div style={cardStyle(selected)}>{children}</div>
     </div>
   );
