@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import {
   createWorkspace,
   listWorkspaces,
+  searchWorkspaces,
   updateWorkspaceMeta,
+  type SearchHit,
   type WorkspaceMeta,
 } from "../workspace/api";
 import { Icon } from "../ui/icons";
@@ -26,6 +28,30 @@ export default function WorkspaceBrowser({
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [hits, setHits] = useState<SearchHit[]>([]);
+
+  /**
+   * Content search across every workspace (spec C), not just a name filter.
+   *
+   * Debounced because each run reads every board and transcript on disk; running
+   * that per keystroke would hammer the filesystem for results the user is still
+   * typing past. Failures are swallowed: search is an enhancement to the list
+   * below it, and a toast on every keystroke of a failing query would be worse
+   * than quietly showing nothing.
+   */
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setHits([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      searchWorkspaces(root, q)
+        .then(setHits)
+        .catch(() => setHits([]));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [query, root]);
   const [newName, setNewName] = useState("");
   const [newPinned, setNewPinned] = useState(false);
 
@@ -156,7 +182,7 @@ export default function WorkspaceBrowser({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search workspaces and tags…"
+          placeholder="Search workspaces, tags, and everything inside them…"
           style={{
             width: "100%",
             background: "var(--surface-2)",
@@ -330,6 +356,62 @@ export default function WorkspaceBrowser({
           </div>
         )}
 
+        {hits.length > 0 && (
+          <div style={{ marginBottom: 22 }}>
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--text-muted)",
+                marginBottom: 8,
+              }}
+            >
+              {hits.length} match{hits.length === 1 ? "" : "es"} inside workspaces
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {hits.map((h, i) => {
+                const ws = items.find((w) => w.id === h.workspaceId);
+                return (
+                  <button
+                    key={`${h.workspaceId}-${i}`}
+                    // A hit is only useful if it takes you there; without the
+                    // workspace still on disk there is nothing to open.
+                    onClick={() => ws && onOpen(ws)}
+                    disabled={!ws}
+                    style={{
+                      textAlign: "left",
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--r-md)",
+                      padding: "9px 12px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 3,
+                    }}
+                  >
+                    <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                      <span style={{ fontSize: 13, fontWeight: 500 }}>{h.workspaceName}</span>
+                      <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                        {h.kind === "block" ? "on the board" : "in conversation"}
+                      </span>
+                    </span>
+                    <span
+                      className="selectable"
+                      style={{
+                        fontSize: 12,
+                        color: "var(--text-muted)",
+                        lineHeight: 1.5,
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {h.snippet}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {shown.length === 0 ? (
           <div
             style={{
@@ -341,7 +423,9 @@ export default function WorkspaceBrowser({
           >
             {items.length === 0
               ? "No workspaces yet. Create one to start a board."
-              : "Nothing matches that filter."}
+              : hits.length > 0
+                ? "No workspace names match, but there are matches inside — see above."
+                : "Nothing matches that filter."}
           </div>
         ) : (
           <div

@@ -266,3 +266,181 @@ mod tests {
         assert_eq!(slugify("!!!"), "workspace");
     }
 }
+
+/// A match from global search.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchHit {
+    pub workspace_id: String,
+    pub workspace_name: String,
+    /// "block" or "transcript" — what the text was found in.
+    pub kind: String,
+    /// Enough surrounding text to recognise the match.
+    pub snippet: String,
+}
+
+/// Case-insensitive substring search returning a snippet around the first match.
+fn snippet_around(haystack: &str, needle_lower: &str, width: usize) -> Option<String> {
+    let lower = haystack.to_lowercase();
+    let at = lower.find(needle_lower)?;
+
+    // Windows are computed on char boundaries, not byte offsets — slicing a UTF-8
+    // string mid-character panics, and research text is full of non-ASCII.
+    let chars: Vec<char> = haystack.chars().collect();
+    let char_at = haystack[..at].chars().count();
+    let start = char_at.saturating_sub(width);
+    let end = (char_at + needle_lower.chars().count() + width).min(chars.len());
+
+    let mut out = String::new();
+    if start > 0 {
+        out.push('…');
+    }
+    out.extend(&chars[start..end]);
+    if end < chars.len() {
+        out.push('…');
+    }
+    Some(out.split_whitespace().collect::<Vec<_>>().join(" "))
+}
+
+/// Pull the human-readable strings out of one board node's `data`.
+fn node_text(node: &serde_json::Value) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    if let Some(data) = node.get("data").and_then(|d| d.as_object()) {
+        for (key, value) in data {
+            // Skip bookkeeping fields; only text a person wrote or read matters.
+            if matches!(key.as_str(), "marker" | "color" | "variant" | "contains" | "filled") {
+                continue;
+            }
+            match value {
+                serde_json::Value::String(s) => parts.push(s.clone()),
+                serde_json::Value::Array(items) => {
+                    // Table rows and columns, diagram nodes and edges.
+                    for item in items {
+                        match item {
+                            serde_json::Value::String(s) => parts.push(s.clone()),
+                            serde_json::Value::Array(inner) => parts.extend(
+                                inner.iter().filter_map(|v| v.as_str().map(str::to_string)),
+                            ),
+                            serde_json::Value::Object(o) => parts.extend(
+                                o.values().filter_map(|v| v.as_str().map(str::to_string)),
+                            ),
+                            _ => {}
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    parts.join(" ")
+}
+
+/// Search every workspace's board and transcript (spec C).
+///
+/// Global rather than scoped to the open workspace, because the thing a
+/// researcher actually wants is "where did I see that before" across projects,
+/// and everything is local structured text so there is nothing to index.
+///
+/// Results are capped: this reads every board and transcript on disk, and a query
+/// like "a" would otherwise return the entire corpus to the UI.
+#[tauri::command]
+pub fn search_workspaces(root: String, query: String) -> Result<Vec<SearchHit>, String> {
+    const MAX_HITS: usize = 60;
+    const PER_WORKSPACE: usize = 6;
+
+    let needle = query.trim().to_lowercase();
+    if needle.len() < 2 {
+        return Ok(vec![]);
+    }
+
+    let mut hits = Vec::new();
+    for meta in list_workspaces(root.clone())? {
+        if hits.len() >= MAX_HITS {
+            break;
+        }
+        let dir = ws_dir(&root, &meta.id);
+        let mut local = 0;
+
+        if let Ok(board) = read_json(&dir.join("board.json")) {
+            if let Some(nodes) = board.get("nodes").and_then(|n| n.as_array()) {
+                for node in nodes {
+                    if local >= PER_WORKSPACE {
+                        break;
+                    }
+                    let text = node_text(node);
+                    if let Some(snippet) = snippet_around(&text, &needle, 60) {
+                        hits.push(SearchHit {
+                            workspace_id: meta.id.clone(),
+                            workspace_name: meta.name.clone(),
+                            kind: "block".to_string(),
+                            snippet,
+                        });
+                        local += 1;
+                    }
+                }
+            }
+        }
+
+        // Transcripts are JSONL, so a malformed line skips rather than aborting
+        // the whole file — a partial transcript is still worth searching.
+        if let Ok(text) = fs::read_to_string(dir.join("transcript.jsonl")) {
+            for line in text.lines() {
+                if local >= PER_WORKSPACE {
+                    break;
+                }
+                let Ok(entry) = serde_json::from_str::<serde_json::Value>(line) else {
+                    continue;
+                };
+                let said = entry.get("text").and_then(|t| t.as_str()).unwrap_or("");
+                if let Some(snippet) = snippet_around(said, &needle, 60) {
+                    hits.push(SearchHit {
+                        workspace_id: meta.id.clone(),
+                        workspace_name: meta.name.clone(),
+                        kind: "transcript".to_string(),
+                        snippet,
+                    });
+                    local += 1;
+                }
+            }
+        }
+    }
+    Ok(hits)
+}
+
+#[cfg(test)]
+mod search_tests {
+    use super::*;
+
+    #[test]
+    fn snippet_is_case_insensitive_and_marks_truncation() {
+        let text = "The quick brown fox jumps over the lazy dog and keeps running for a while";
+        let s = snippet_around(text, "fox", 10).unwrap();
+        assert!(s.to_lowercase().contains("fox"));
+        assert!(s.starts_with('…'), "expected leading ellipsis, got {s:?}");
+    }
+
+    #[test]
+    fn snippet_does_not_split_multibyte_characters() {
+        // Slicing this by byte offset would panic; by char it must not.
+        let text = "protégé café naïve — résumé follows the pattern";
+        let s = snippet_around(text, "naïve", 5).unwrap();
+        assert!(s.contains("naïve"), "got {s:?}");
+    }
+
+    #[test]
+    fn misses_return_none() {
+        assert!(snippet_around("nothing here", "absent", 10).is_none());
+    }
+
+    #[test]
+    fn node_text_reaches_into_table_rows() {
+        let node = serde_json::json!({
+            "data": { "title": "Compare", "columns": ["A", "B"],
+                      "rows": [["redis", "memcached"]], "color": "slate" }
+        });
+        let text = node_text(&node);
+        assert!(text.contains("memcached"), "got {text:?}");
+        // Bookkeeping fields must not pollute the searchable text.
+        assert!(!text.contains("slate"), "got {text:?}");
+    }
+}

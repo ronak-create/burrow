@@ -114,3 +114,17 @@ export const readImageDataUrl = (root: string, id: string, file: string) =>
 
 export const deleteDocument = (root: string, id: string, file: string) =>
   invoke<void>("delete_document", { root, id, file });
+
+/* ---------- global search (spec C) ---------- */
+
+export interface SearchHit {
+  workspaceId: string;
+  workspaceName: string;
+  /** "block" or "transcript" — what the text was found in. */
+  kind: "block" | "transcript";
+  snippet: string;
+}
+
+/** Search every workspace's board and transcript, not just the open one. */
+export const searchWorkspaces = (root: string, query: string) =>
+  invoke<SearchHit[]>("search_workspaces", { root, query });
