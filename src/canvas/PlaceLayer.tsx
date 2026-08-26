@@ -1,10 +1,16 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ViewportPortal, useReactFlow } from "@xyflow/react";
 import { nanoid } from "nanoid";
 
 import { useBoard } from "./store";
 import { useCanvasMode } from "./ink/mode";
-import { DEFAULT_SIZE, type Block, type BlockKind, type Rect } from "./types";
+import {
+  DEFAULT_SIZE,
+  centreInside,
+  type Block,
+  type BlockKind,
+  type Rect,
+} from "./types";
 
 /**
  * Drawing a block onto the canvas.
@@ -56,6 +62,21 @@ export default function PlaceLayer() {
 
   const [rect, setRect] = useState<Rect | null>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
+
+  // Escape cancels an armed tool, the way it dismisses every other transient
+  // state here. Without it the only way out was to place something and delete it.
+  useEffect(() => {
+    if (mode !== "place") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        start.current = null;
+        setRect(null);
+        disarm();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mode, disarm]);
 
   const toCanvas = useCallback(
     (e: React.PointerEvent) => screenToFlowPosition({ x: e.clientX, y: e.clientY }),
@@ -112,6 +133,19 @@ export default function PlaceLayer() {
       : { x: s.x - size.width / 2, y: s.y - size.height / 2, ...size };
 
     const id = `${pending.kind}-${nanoid(8)}`;
+
+    // FrameData's contract: a block joins a frame when it is dragged in, or when
+    // the frame is drawn or resized around it. Resize already did this; drawing
+    // did not, so a frame drawn deliberately around existing work adopted
+    // nothing and then dragged away empty.
+    let contains: string[] = [];
+    if (pending.kind === "frame") {
+      const board = useBoard.getState().board;
+      contains = board.nodes
+        .filter((b) => b.type !== "frame" && centreInside(box, b))
+        .map((b) => b.id);
+    }
+
     run(
       {
         t: "addBlock",
@@ -123,7 +157,10 @@ export default function PlaceLayer() {
           height: box.height,
           // Frames are containers and must sit behind the blocks they enclose.
           zIndex: pending.kind === "frame" ? 0 : 1,
-          data: newBlockData(pending.kind, pending.variant, inkStrokeColor),
+          data: {
+            ...newBlockData(pending.kind, pending.variant, inkStrokeColor),
+            ...(contains.length ? { contains } : {}),
+          },
         } as Block,
       },
       "user",

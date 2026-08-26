@@ -15,18 +15,6 @@ import DocumentViewer from "./DocumentViewer";
 import DocumentsPanel from "./DocumentsPanel";
 import type { WorkspaceMeta } from "../workspace/api";
 
-/** Every block kind the toolbar can draw. */
-const ENABLED: BlockKind[] = [
-  "note",
-  "text",
-  "shape",
-  "frame",
-  "table",
-  "diagram",
-  "doc",
-  "image",
-];
-
 /** Which shape variant the toolbar's shape buttons create. */
 type ToolSpec = { kind: BlockKind; label: string; icon: IconName; variant?: "rectangle" | "ellipse" };
 
@@ -76,9 +64,18 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
    * user actually clicks or drags, which is the only place they can have meant.
    */
   const arm = useCanvasMode((m) => m.arm);
+  const disarm = useCanvasMode((m) => m.disarm);
   const addBlock = useCallback(
-    (kind: BlockKind, variant?: "rectangle" | "ellipse") => arm({ kind, variant }),
-    [arm],
+    (kind: BlockKind, variant?: "rectangle" | "ellipse") => {
+      // Clicking the armed tool again puts it away, rather than re-arming what is
+      // already armed — a toggle is what a pressed-looking button implies.
+      const m = useCanvasMode.getState();
+      const same =
+        m.mode === "place" && m.pending?.kind === kind && m.pending?.variant === variant;
+      if (same) disarm();
+      else arm({ kind, variant });
+    },
+    [arm, disarm],
   );
 
   useEffect(() => {
@@ -254,7 +251,6 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
             <span style={{ width: 1, alignSelf: "stretch", background: "var(--border)", margin: "0 5px" }} />
 
             {TOOLS.map((t) => {
-              const on = ENABLED.includes(t.kind);
               // An armed tool has to look armed: the click no longer produces a
               // block, so without this the toolbar gives no sign anything happened.
               const armed =
@@ -264,13 +260,8 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
               return (
                 <button
                   key={`${t.kind}:${t.variant ?? ""}`}
-                  disabled={!on}
                   onClick={() => addBlock(t.kind, t.variant)}
-                  title={
-                    on
-                      ? `${t.label} — click or drag on the canvas to draw one`
-                      : `${t.label} — coming in a later milestone`
-                  }
+                  title={`${t.label} — click or drag on the canvas to draw one`}
                   style={{
                     width: 56,
                     padding: "7px 0",
@@ -280,12 +271,10 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
                     alignItems: "center",
                     gap: 3,
                     background: armed ? "var(--accent-wash)" : "transparent",
-                    color: armed ? "var(--accent)" : on ? "var(--text)" : "var(--text-faint)",
-                    cursor: on ? "pointer" : "not-allowed",
-                    opacity: on ? 1 : 0.45,
+                    color: armed ? "var(--accent)" : "var(--text)",
                   }}
                   onMouseEnter={(e) =>
-                    on && !armed && (e.currentTarget.style.background = "var(--card-hover)")
+                    !armed && (e.currentTarget.style.background = "var(--card-hover)")
                   }
                   onMouseLeave={(e) =>
                     (e.currentTarget.style.background = armed ? "var(--accent-wash)" : "transparent")

@@ -87,3 +87,36 @@ describe("blockRect", () => {
     expect(blockRect(bare)).toEqual({ x: 0, y: 0, width: 560, height: 380 });
   });
 });
+
+describe("a frame drawn around existing blocks", () => {
+  // Regression: PlaceLayer created frames with an empty `contains`, so drawing a
+  // frame around work adopted nothing and dragging it left everything behind —
+  // contradicting FrameData's stated contract that drawing around a block joins
+  // it. This asserts the predicate PlaceLayer now uses.
+  it("adopts blocks whose centre falls inside it", () => {
+    const box = { x: 0, y: 0, width: 400, height: 300 };
+    const inside = note("inside", 100, 100);
+    const outside = note("outside", 900, 900);
+
+    const adopted = [inside, outside]
+      .filter((b) => b.type !== "frame" && centreInside(box, b))
+      .map((b) => b.id);
+
+    expect(adopted).toEqual(["inside"]);
+  });
+
+  it("never adopts another frame", () => {
+    const box = { x: 0, y: 0, width: 800, height: 800 };
+    const inner: Block = {
+      id: "inner",
+      type: "frame",
+      position: { x: 100, y: 100 },
+      width: 200,
+      height: 200,
+      data: { label: "inner" } as FrameData,
+    } as Block;
+
+    const adopted = [inner].filter((b) => b.type !== "frame" && centreInside(box, b));
+    expect(adopted).toEqual([]);
+  });
+});

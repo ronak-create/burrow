@@ -1,7 +1,6 @@
 import { nanoid } from "nanoid";
 import type { ToolCall, ToolResult, ToolSpec } from "../providers/types";
-import type { Command } from "../canvas/commands";
-import { useBoard } from "../canvas/store";
+import { runAsAgent as run, useBoard } from "../canvas/store";
 import { boardCentre, boundsOf, findFreeSpot } from "../canvas/placement";
 import { isSparse } from "../canvas/serialize";
 import { DEFAULT_SIZE, type Block, type XY } from "../canvas/types";
@@ -255,9 +254,7 @@ function anchor(): XY {
   return boardCentre(board);
 }
 
-function run(cmd: Command) {
-  useBoard.getState().run(cmd, "agent");
-}
+
 
 export async function runTool(call: ToolCall): Promise<ToolResult> {
   const { board } = useBoard.getState();
