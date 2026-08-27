@@ -21,10 +21,14 @@ papers can be searched across four open indexes.
 - Canvas with note, text, shape, frame, table, diagram, doc and image blocks —
   drawn onto the canvas rather than dropped at the viewport centre
 - Freehand ink and eraser, and one undo stack shared by you and the assistant
-- Assistant with eleven tools: write blocks, connect them, frame them, read your
-  documents, search the literature
+- Assistant with fourteen tools: write blocks, connect them, frame them, flag what
+  it is unsure about, read your documents, search the literature and the web, and
+  generate images
 - Documents: PDF, Word, Markdown and text imported into the workspace, read
   in-app, and excerpted onto the board
+- Web search and image generation, both BYOK and both provider-agnostic — including
+  a custom OpenAI-compatible endpoint, so a local image server works the same way a
+  local model does
 - BYOK keys in the OS keychain, or **no keys at all** — point it at Ollama or any
   OpenAI-compatible endpoint and the whole thing runs locally
 - Light/dark, monochrome by default, with an optional accent
@@ -35,7 +39,6 @@ papers can be searched across four open indexes.
   true background listening needs a dedicated wake-word engine.
 - Local speech-to-text. Transcription still needs a key (Groq, OpenAI or
   Deepgram); the zero-key path is local Whisper and is not bundled.
-- Image generation.
 
 ## Stack
 

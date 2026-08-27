@@ -229,3 +229,100 @@ now carries an explicit delete control, independent of where focus happens to be
 - **Image generation.** Spec H, not started.
 - **Google Scholar.** No official API; scraping violates its terms. Users import
   Scholar-only material as a document instead.
+
+---
+
+## Build Log — Milestone 3 (Aug 2026)
+
+### A file the user is invited to edit is a file that arrives malformed
+
+`board.json` is described to users as a plain file they own and may open in a text
+editor, and loading it did `load({...emptyBoard(), ...board})`. A spread does not
+validate: `"nodes": null` replaced the empty array with null, React Flow called
+`.map()` on it, and the app went white with no route back to the workspace list.
+The path in was a file the README encourages people to open.
+
+The rule chosen is salvage, not reject. `coerce.ts` keeps every block that can be
+rendered and drops only what cannot, then reports the count. Rejecting the file
+outright would be correct and useless — the user would be told their board is
+invalid and given nothing. What gets dropped: an unknown block kind, a missing or
+non-string id, a duplicate id (React Flow renders one and silently loses the
+other, and every command targeting that id hits whichever came first), an edge
+pointing at a block that is not there, a one-point ink stroke (draws nothing, and
+the eraser can never find it), and a zoom of zero, which collapses the canvas to
+nothing visible and is indistinguishable from having lost the board.
+
+This does not only matter for hand editing. A board written by a newer version, a
+file restored from a partial sync, or a disk that filled mid-write all arrive the
+same way.
+
+### Web search is BYOK because the alternative was already refused
+
+Paper search is free and keyless because four public academic indexes exist.
+General web search has no equivalent: every usable API is paid, and the only
+keyless route is scraping a search engine's results page. This project already
+declined to scrape Google Scholar on exactly those grounds, and doing it here
+would have made that position decorative. So web search is Brave or Tavily, BYOK,
+and stays dark until a key exists — the same way every other optional capability
+behaves.
+
+### Generated images are files, not data URLs
+
+An image provider will happily return a hosted URL, and every one of them expires.
+A workspace folder has to still open a year from now with no network, so providers
+are required to return base64 and a gateway that ignores `response_format` is
+reported as returning a link rather than as returning nothing.
+
+The bytes go to `<workspace>/images/` through a new Rust `write_image`, never
+inline into the board. A `board.json` carrying megabytes of base64 stops being
+something anyone can open in a text editor, and it is also what the assistant
+reads on every single turn — the image would burn context forever for no benefit.
+
+The filename comes from the model, so it is reduced to safe characters rather than
+validated and rejected. Rejecting means the tool fails on a name the model had no
+way to know was wrong; reducing means it works and the file lands where it should.
+
+### A tool the user cannot use should not be offered
+
+Tools are filtered by capability before the spec is sent. An unconfigured tool
+cannot succeed, and leaving it in the list costs a whole step: the model calls it,
+gets an explanation back, and has to pick something else. The largest models
+absorb that. The smallest local ones — the ones this project explicitly supports —
+often do not, and spend the turn stuck. The dispatch cases still check, because
+settings can change mid-conversation, and the filter is recomputed per step so a
+key added while talking becomes usable without restarting.
+
+### The blocks looked like objects and behaved like forms
+
+Every block rendered its live inputs straight onto the canvas. An input swallows
+the pointer, so three separate complaints turned out to be one cause: a click
+landed inside a text field instead of selecting the card, the field's `nodrag`
+meant most of a card could not be dragged at all, and its `nowheel` meant the
+wheel scrolled the field instead of zooming the board.
+
+Editing is now a mode entered deliberately: one click selects the block, a double
+click drills into its contents, Escape steps back out, and deselecting leaves.
+Until then the contents carry `pointerEvents: none`, which is what does the actual
+work — the press is delivered to React Flow's node wrapper underneath, so the drag
+starts, and the wheel event reaches the pane, so the board zooms. It also makes
+every `nodrag` and `nowheel` inside harmless while inactive, because neither
+element is ever the event target.
+
+`zoomOnDoubleClick` had to go off with it. Double click is now how you edit, and
+it cannot also be how the board zooms, or every attempt to type jumps the
+viewport.
+
+### Verified
+
+Tool discrimination was checked against a real tool-calling model rather than
+assumed, the same standard milestone 2 set: nemotron-3.5 32B over Ollama picked
+`search_papers`, `search_web`, `generate_image` and `add_note` correctly on four
+prompts written to be confusable. 82 frontend tests, 11 Rust tests, type-check
+clean.
+
+### Still deliberately not done
+
+- **Wake word** and **local speech-to-text** are unchanged from milestone 2. Both
+  need a shipped binary and model file; neither is a code problem.
+- **Vision fallback for ink.** Still reserved in `serialize.ts`, still not worth
+  building until someone hits the limits of the structured view.
