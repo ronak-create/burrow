@@ -1,5 +1,5 @@
 import { NodeResizer, type NodeProps } from "@xyflow/react";
-import { MarkerPin, NODRAG, useInlineEdit } from "./common";
+import { MarkerPin, NODRAG, inertStyle, useActivation, useInlineEdit } from "./common";
 import { ConnectHandles } from "./NoteBlock";
 import { inkColor } from "../ink/stroke";
 import type { ShapeBlock as ShapeBlockType } from "../types";
@@ -16,9 +16,14 @@ export default function ShapeBlockView({ id, data, selected }: NodeProps<ShapeBl
   const label = useInlineEdit(id, "label");
   const stroke = inkColor(data.color ?? "slate");
   const round = data.variant === "ellipse" ? "50%" : "var(--r-md)";
+  const { active, ref, onDoubleClick } = useActivation(id, !!selected);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+    <div
+      ref={ref}
+      onDoubleClick={onDoubleClick}
+      style={{ position: "relative", width: "100%", height: "100%" }}
+    >
       {data.marker ? <MarkerPin id={id} /> : null}
 
       <NodeResizer
@@ -59,6 +64,7 @@ export default function ShapeBlockView({ id, data, selected }: NodeProps<ShapeBl
           onBlur={label.onBlur}
           placeholder=""
           style={{
+            ...inertStyle(active),
             background: "transparent",
             border: "none",
             outline: "none",

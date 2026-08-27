@@ -1,5 +1,5 @@
 import { NodeResizer, type NodeProps } from "@xyflow/react";
-import { MarkerPin, NODRAG, useInlineEdit } from "./common";
+import { MarkerPin, NODRAG, inertStyle, useActivation, useInlineEdit } from "./common";
 import type { FrameBlock as FrameBlockType } from "../types";
 
 /**
@@ -13,9 +13,14 @@ import type { FrameBlock as FrameBlockType } from "../types";
  */
 export default function FrameBlockView({ id, data, selected }: NodeProps<FrameBlockType>) {
   const label = useInlineEdit(id, "label");
+  const { active, ref, onDoubleClick } = useActivation(id, !!selected);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+    <div
+      ref={ref}
+      onDoubleClick={onDoubleClick}
+      style={{ position: "relative", width: "100%", height: "100%" }}
+    >
       {data.marker ? <MarkerPin id={id} /> : null}
 
       <NodeResizer
@@ -45,10 +50,13 @@ export default function FrameBlockView({ id, data, selected }: NodeProps<FrameBl
         }}
       />
 
-      {/* The label bar is the drag handle for the whole frame. */}
+      {/* The label bar is the drag handle for the whole frame — which is why it
+          stays inert until the frame is drilled into. Renaming is rare; dragging a
+          frame by its only visible handle is not. */}
       <input
         className="frame-label"
         style={{
+          ...inertStyle(active),
           position: "absolute",
           top: 8,
           left: 10,

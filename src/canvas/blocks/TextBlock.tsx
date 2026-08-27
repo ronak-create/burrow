@@ -1,5 +1,5 @@
 import { NodeResizer, type NodeProps } from "@xyflow/react";
-import { MarkerPin, NODRAG, NOWHEEL, useInlineEdit } from "./common";
+import { MarkerPin, NODRAG, NOWHEEL, inertStyle, useActivation, useInlineEdit } from "./common";
 import { ConnectHandles } from "./NoteBlock";
 import { inkColor } from "../ink/stroke";
 import type { TextBlock as TextBlockType } from "../types";
@@ -11,9 +11,14 @@ import type { TextBlock as TextBlockType } from "../types";
  */
 export default function TextBlockView({ id, data, selected }: NodeProps<TextBlockType>) {
   const text = useInlineEdit(id, "text");
+  const { active, ref, onDoubleClick } = useActivation(id, !!selected);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+    <div
+      ref={ref}
+      onDoubleClick={onDoubleClick}
+      style={{ position: "relative", width: "100%", height: "100%" }}
+    >
       {data.marker ? <MarkerPin id={id} /> : null}
 
       <NodeResizer
@@ -39,11 +44,16 @@ export default function TextBlockView({ id, data, selected }: NodeProps<TextBloc
         onBlur={text.onBlur}
         placeholder="Text"
         style={{
+          ...inertStyle(active),
           width: "100%",
           height: "100%",
           background: "transparent",
           // Only the selection ring, never a card — this must not read as a note.
-          border: selected ? "1px solid var(--accent-line)" : "1px solid transparent",
+          border: active
+            ? "1px solid var(--accent)"
+            : selected
+              ? "1px solid var(--accent-line)"
+              : "1px solid transparent",
           borderRadius: "var(--r-sm)",
           outline: "none",
           resize: "none",

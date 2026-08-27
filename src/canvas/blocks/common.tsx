@@ -1,4 +1,5 @@
-import { useCallback, useRef, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { create } from "zustand";
 import { useBoard } from "../store";
 import { Icon } from "../../ui/icons";
 
@@ -52,6 +53,108 @@ export function useInlineEdit(id: string, key: string) {
 /** React Flow reserves these: nodrag stops drag-to-move, nowheel allows inner scroll. */
 export const NODRAG = "nodrag";
 export const NOWHEEL = "nowheel";
+
+/* ---------- block activation ---------- */
+
+/**
+ * Which block, if any, the user has drilled into.
+ *
+ * A block is a single object first and a set of editable fields second. Every
+ * block used to render its live inputs straight onto the canvas, and because an
+ * input swallows the pointer, three things followed: one click landed inside a
+ * text field instead of selecting the card, the field's `nodrag` meant most of a
+ * card's surface could not be dragged at all, and its `nowheel` meant the wheel
+ * scrolled the field instead of zooming the board. The card looked like an object
+ * and behaved like a form.
+ *
+ * So editing is a mode you enter deliberately, the way it works in every canvas
+ * tool: one click selects the block, a double click drills into its contents.
+ * Until then the contents are inert and the pointer belongs to the board — drag
+ * from anywhere, zoom from anywhere. Only one block is active at a time, because
+ * entering one is what leaves the last.
+ */
+interface ActiveBlockState {
+  activeId: string | null;
+  activate: (id: string) => void;
+  clear: () => void;
+}
+
+export const useActiveBlock = create<ActiveBlockState>((set) => ({
+  activeId: null,
+  activate: (id) => set({ activeId: id }),
+  clear: () => set({ activeId: null }),
+}));
+
+/**
+ * Wire a block into the activation model.
+ *
+ * Returns the props the block's outer element must spread, plus `active`. The
+ * caller wraps its interactive contents in `<BlockContents>`, which is what makes
+ * them inert until drilled into.
+ */
+export function useActivation(id: string, selected: boolean) {
+  const activeId = useActiveBlock((s) => s.activeId);
+  const activate = useActiveBlock((s) => s.activate);
+  const clear = useActiveBlock((s) => s.clear);
+  const active = activeId === id;
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  // Deselecting is leaving. Without this a block stayed drilled-in after the user
+  // clicked the canvas, and the next click on it landed in a field again.
+  useEffect(() => {
+    if (active && !selected) clear();
+  }, [active, selected, clear]);
+
+  // Escape steps back out to having the block selected, matching every other
+  // dismissable surface in the app.
+  useEffect(() => {
+    if (!active) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        clear();
+        (document.activeElement as HTMLElement | null)?.blur();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [active, clear]);
+
+  const onDoubleClick = useCallback(() => {
+    if (active) return;
+    activate(id);
+    // The double click that drilled in cannot also land in a field, because the
+    // field was inert when it happened. Put the caret somewhere useful instead of
+    // making the user click a third time.
+    requestAnimationFrame(() => {
+      const el = ref.current?.querySelector<HTMLElement>(
+        "input:not([disabled]), textarea:not([disabled]), [contenteditable='true']",
+      );
+      el?.focus();
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) el.select();
+    });
+  }, [active, activate, id]);
+
+  return { active, ref, onDoubleClick };
+}
+
+/**
+ * Makes a block's contents inert until it has been drilled into.
+ *
+ * `pointerEvents: none` is doing the real work. Applied to the element holding a
+ * block's fields, a press on a text field is delivered instead to React Flow's
+ * node wrapper underneath — which starts a drag — and a wheel event reaches the
+ * pane, which zooms the board. It also renders any `nodrag` or `nowheel` inside
+ * harmless while inactive, since neither element is ever the event target.
+ *
+ * A style rather than a wrapper component on purpose: every block's contents sit
+ * in a flex layout, and an extra div between parent and children would collapse
+ * it. This goes on a box that already exists.
+ */
+export const inertStyle = (active: boolean): CSSProperties => ({
+  pointerEvents: active ? "auto" : "none",
+  // Selecting text inside a block nobody has drilled into would fight the marquee.
+  userSelect: active ? "auto" : "none",
+});
 
 export const cardStyle = (selected: boolean): CSSProperties => ({
   background: "var(--card)",
@@ -182,11 +285,28 @@ export function BlockShell({
   id: string;
   children: ReactNode;
 }) {
+  const { active, ref, onDoubleClick } = useActivation(id, selected);
+
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+    <div
+      ref={ref}
+      onDoubleClick={onDoubleClick}
+      style={{ position: "relative", width: "100%", height: "100%" }}
+    >
       {marker ? <MarkerPin id={id} /> : null}
       {selected ? <DeleteButton id={id} /> : null}
-      <div style={cardStyle(selected)}>{children}</div>
+      {/* The pin and the delete control sit outside the card so they stay clickable
+          on a block nobody has drilled into — they act on the block, not in it. */}
+      <div
+        style={{
+          ...cardStyle(selected),
+          ...inertStyle(active),
+          // A drilled-in card reads as focused rather than merely selected.
+          ...(active ? { borderColor: "var(--accent)" } : {}),
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 }

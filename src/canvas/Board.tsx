@@ -305,6 +305,9 @@ export default function Board() {
       // Middle and right drag pan; left is left free for marquee select, or for the
       // pen when one is active. So the board stays navigable without leaving the pen.
       panOnDrag={[1, 2]}
+      // Double click is how you drill into a block, so it cannot also be how the
+      // board zooms — otherwise every attempt to edit text jumps the viewport.
+      zoomOnDoubleClick={false}
       elevateNodesOnSelect
       elevateEdgesOnSelect
       deleteKeyCode={["Delete", "Backspace"]}
