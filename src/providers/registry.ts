@@ -9,6 +9,8 @@ import { cerebras } from "./llm/cerebras";
 import { custom } from "./llm/custom";
 import { deepgram } from "./stt/deepgram";
 import { groqWhisper, openaiWhisper } from "./stt/whisper";
+import { IMAGE_PROVIDERS, type ImageProvider } from "./image";
+import { SEARCH_PROVIDERS, type SearchProvider } from "./search";
 import type { LLMProvider, STTProvider } from "./types";
 
 /**
@@ -22,9 +24,14 @@ import type { LLMProvider, STTProvider } from "./types";
 
 export const LLM_PROVIDERS: LLMProvider[] = [anthropic, openai, google, groq, cerebras, custom];
 export const STT_PROVIDERS: STTProvider[] = [groqWhisper, openaiWhisper, deepgram];
+export { IMAGE_PROVIDERS, SEARCH_PROVIDERS };
 
 /** Every provider id we might hold a key for. The keychain cannot be enumerated. */
-const KNOWN_KEYS = [...new Set([...LLM_PROVIDERS, ...STT_PROVIDERS].map((p) => p.id))];
+const KNOWN_KEYS = [
+  ...new Set(
+    [...LLM_PROVIDERS, ...STT_PROVIDERS, ...IMAGE_PROVIDERS, ...SEARCH_PROVIDERS].map((p) => p.id),
+  ),
+];
 
 export interface Settings {
   llmProvider: string;
@@ -32,6 +39,11 @@ export interface Settings {
   sttProvider: string;
   /** Base URL for the "Custom / Local" provider, e.g. an Ollama server. */
   customBaseUrl: string;
+  imageProvider: string;
+  imageModel: string;
+  /** Base URL for a custom OpenAI-compatible image endpoint, e.g. LocalAI. */
+  imageBaseUrl: string;
+  searchProvider: string;
   /** Canvas backdrop pattern. */
   canvasPattern: "dots" | "grid" | "plain";
   /**
@@ -53,6 +65,12 @@ const DEFAULTS: Settings = {
   llmModel: "",
   sttProvider: "groq",
   customBaseUrl: "http://127.0.0.1:11434/v1",
+  // Same posture as the reasoning layer: neither of these is on until the user
+  // supplies a key or points the custom option at their own endpoint.
+  imageProvider: "openai-image",
+  imageModel: "gpt-image-1",
+  imageBaseUrl: "http://127.0.0.1:8080/v1",
+  searchProvider: "brave",
   canvasPattern: "dots",
   canvasShade: 0,
   voiceReplies: true,
@@ -122,6 +140,18 @@ export function canSpeak(s: RegistryState = useProviders.getState()): boolean {
   return s.speechAvailable && s.settings.voiceReplies;
 }
 
+export function canGenerateImages(s: RegistryState = useProviders.getState()): boolean {
+  const provider = IMAGE_PROVIDERS.find((p) => p.id === s.settings.imageProvider);
+  if (provider?.keyOptional) {
+    return Boolean(s.settings.imageBaseUrl.trim() && s.settings.imageModel.trim());
+  }
+  return s.configured.includes(s.settings.imageProvider) && Boolean(s.settings.imageModel.trim());
+}
+
+export function canSearchWeb(s: RegistryState = useProviders.getState()): boolean {
+  return s.configured.includes(s.settings.searchProvider);
+}
+
 export function activeLLM(): LLMProvider {
   const { settings } = useProviders.getState();
   return LLM_PROVIDERS.find((p) => p.id === settings.llmProvider) ?? anthropic;
@@ -130,6 +160,16 @@ export function activeLLM(): LLMProvider {
 export function activeSTT(): STTProvider {
   const { settings } = useProviders.getState();
   return STT_PROVIDERS.find((p) => p.id === settings.sttProvider) ?? groqWhisper;
+}
+
+export function activeImage(): ImageProvider {
+  const { settings } = useProviders.getState();
+  return IMAGE_PROVIDERS.find((p) => p.id === settings.imageProvider) ?? IMAGE_PROVIDERS[0];
+}
+
+export function activeSearch(): SearchProvider {
+  const { settings } = useProviders.getState();
+  return SEARCH_PROVIDERS.find((p) => p.id === settings.searchProvider) ?? SEARCH_PROVIDERS[0];
 }
 
 /**

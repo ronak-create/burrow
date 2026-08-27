@@ -103,6 +103,65 @@ pub fn import_image(root: String, id: String, source: String) -> Result<Document
     import_into(&root, &id, &source, "images")
 }
 
+/// Write generated image bytes into <workspace>/images/ (spec H).
+///
+/// Generated images arrive as base64 over the wire, so there is no source file to
+/// copy — but they must still land in the workspace folder rather than being held
+/// in the board as an inline data URL. A board.json carrying megabytes of base64
+/// stops being something the user can open in a text editor, and it is also what
+/// the assistant reads, so the image would burn context on every turn.
+///
+/// `stem` is a caller-supplied hint, not a path: it is reduced to safe characters
+/// and given a numeric suffix if taken, exactly like an import.
+#[tauri::command]
+pub fn write_image(
+    root: String,
+    id: String,
+    stem: String,
+    ext: String,
+    base64_data: String,
+) -> Result<DocumentInfo, String> {
+    let ext = ext.trim().trim_start_matches('.').to_lowercase();
+    if !matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp" | "gif") {
+        return Err(format!("Refusing to write an image of type .{ext}"));
+    }
+
+    // A model-authored name is untrusted input. Rather than validating and
+    // rejecting, reduce it to something that cannot traverse or surprise.
+    let mut safe: String = stem
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '-' })
+        .collect();
+    safe = safe.trim_matches('-').chars().take(60).collect();
+    if safe.is_empty() {
+        safe = "image".to_string();
+    }
+
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(base64_data.as_bytes())
+        .map_err(|e| format!("Image data was not valid base64: {e}"))?;
+    if bytes.is_empty() {
+        return Err("The provider returned an empty image.".to_string());
+    }
+
+    let dir = ws_dir(&root, &id).join("images");
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+
+    let mut file = format!("{safe}.{ext}");
+    let mut n = 2;
+    while dir.join(&file).exists() {
+        file = format!("{safe}-{n}.{ext}");
+        n += 1;
+    }
+
+    fs::write(dir.join(&file), &bytes).map_err(|e| e.to_string())?;
+    Ok(DocumentInfo {
+        kind: kind_of(&file),
+        file,
+        size_bytes: bytes.len() as u64,
+    })
+}
+
 #[tauri::command]
 pub fn list_documents(root: String, id: String) -> Result<Vec<DocumentInfo>, String> {
     let dir = ws_dir(&root, &id).join("documents");
@@ -324,5 +383,62 @@ mod tests {
     fn reads_extension_case_insensitively() {
         assert_eq!(kind_of("Paper.PDF"), "pdf");
         assert_eq!(kind_of("notes"), "");
+    }
+
+    #[test]
+    fn write_image_sanitises_a_model_authored_name() {
+        let root = std::env::temp_dir().join(format!("burrow-img-{}", std::process::id()));
+        let _ = fs::create_dir_all(&root);
+        // One transparent 1x1 PNG.
+        let png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+
+        let info = write_image(
+            root.to_string_lossy().to_string(),
+            "ws".into(),
+            "../../etc/pass wd".into(),
+            "png".into(),
+            png.into(),
+        )
+        .unwrap();
+
+        // The name is reduced, not rejected — and it cannot escape images/.
+        assert!(!info.file.contains(".."), "traversal survived: {}", info.file);
+        assert!(!info.file.contains('/') && !info.file.contains('\\'));
+        assert!(info.file.ends_with(".png"));
+        assert!(info.size_bytes > 0);
+        assert!(root.join("ws").join("images").join(&info.file).exists());
+
+        // A second write of the same name must not overwrite the first.
+        let again = write_image(
+            root.to_string_lossy().to_string(),
+            "ws".into(),
+            "../../etc/pass wd".into(),
+            "png".into(),
+            png.into(),
+        )
+        .unwrap();
+        assert_ne!(info.file, again.file);
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn write_image_rejects_bad_input() {
+        let root = std::env::temp_dir().join("burrow-img-neg");
+        let call = |ext: &str, data: &str| {
+            write_image(
+                root.to_string_lossy().to_string(),
+                "ws".into(),
+                "x".into(),
+                ext.into(),
+                data.into(),
+            )
+        };
+        // An executable dressed as an image must not be written at all.
+        assert!(call("exe", "AAAA").is_err());
+        assert!(call("svg", "AAAA").is_err());
+        assert!(call("png", "not base64!!").is_err());
+        assert!(call("png", "").is_err());
+        let _ = fs::remove_dir_all(&root);
     }
 }

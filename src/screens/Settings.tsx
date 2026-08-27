@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import {
+  IMAGE_PROVIDERS,
   LLM_PROVIDERS,
+  SEARCH_PROVIDERS,
   STT_PROVIDERS,
   canChat,
+  canGenerateImages,
+  canSearchWeb,
   canSpeak,
   canTranscribe,
   useProviders,
@@ -11,6 +15,7 @@ import { deleteApiKey, setApiKey } from "../workspace/api";
 import { Icon } from "../ui/icons";
 import { toastError, toastWarn } from "../ui/toast";
 import { listCustomModels } from "../providers/llm/custom";
+import { listCustomImageModels } from "../providers/image";
 import { ACCENTS, resolvedTheme, useAccent, useTheme, type ThemePref } from "../ui/theme";
 
 const THEMES: Array<{ pref: ThemePref; label: string }> = [
@@ -34,6 +39,8 @@ export default function Settings({ onClose }: { onClose: () => void }) {
   const [saving, setSaving] = useState<string | null>(null);
   const [found, setFound] = useState<string[]>([]);
   const [detecting, setDetecting] = useState(false);
+  const [imageFound, setImageFound] = useState<string[]>([]);
+  const [detectingImage, setDetectingImage] = useState(false);
 
   async function detect() {
     setDetecting(true);
@@ -50,6 +57,23 @@ export default function Settings({ onClose }: { onClose: () => void }) {
       toastError(e);
     } finally {
       setDetecting(false);
+    }
+  }
+
+  async function detectImages() {
+    setDetectingImage(true);
+    try {
+      const ids = await listCustomImageModels();
+      setImageFound(ids);
+      if (ids.length === 0) {
+        toastWarn("That endpoint answered but listed no models.");
+      } else if (!providers.settings.imageModel.trim()) {
+        providers.update({ imageModel: ids[0] });
+      }
+    } catch (e) {
+      toastError(e);
+    } finally {
+      setDetectingImage(false);
     }
   }
 
@@ -96,11 +120,17 @@ export default function Settings({ onClose }: { onClose: () => void }) {
    */
   const llm = LLM_PROVIDERS.find((p) => p.id === providers.settings.llmProvider);
   const stt = STT_PROVIDERS.find((p) => p.id === providers.settings.sttProvider);
+  const img = IMAGE_PROVIDERS.find((p) => p.id === providers.settings.imageProvider);
+  const web = SEARCH_PROVIDERS.find((p) => p.id === providers.settings.searchProvider);
   const keyRows = [
     ...(llm && !llm.keyOptional
       ? [{ id: llm.id, label: llm.label, use: "Reasoning", keyUrl: llm.keyUrl }]
       : []),
     ...(stt ? [{ id: stt.id, label: stt.label, use: "Speech-to-text", keyUrl: stt.keyUrl }] : []),
+    ...(img && !img.keyOptional
+      ? [{ id: img.id, label: img.label, use: "Image generation", keyUrl: img.keyUrl }]
+      : []),
+    ...(web ? [{ id: web.id, label: web.label, use: "Web search", keyUrl: web.keyUrl }] : []),
   ].filter((r, i, all) => all.findIndex((x) => x.id === r.id) === i);
 
   const capabilities = [
@@ -111,6 +141,13 @@ export default function Settings({ onClose }: { onClose: () => void }) {
       label: "Spoken replies",
       on: canSpeak(providers),
       note: providers.speechAvailable ? "Uses your OS voices, no key needed" : "OS speech engine unavailable",
+    },
+    { label: "Paper search", on: true, note: "Four open indexes, no key needed" },
+    { label: "Web search", on: canSearchWeb(providers), note: "Needs a web search key" },
+    {
+      label: "Image generation",
+      on: canGenerateImages(providers),
+      note: "Needs an image provider and model",
     },
   ];
 
@@ -396,6 +433,115 @@ export default function Settings({ onClose }: { onClose: () => void }) {
               ))}
             </select>
           </Row>
+        </Section>
+
+        <Section title="Research and images">
+          <Row label="Web search">
+            <select
+              value={providers.settings.searchProvider}
+              onChange={(e) => providers.update({ searchProvider: e.target.value })}
+              style={selectStyle}
+            >
+              {SEARCH_PROVIDERS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </Row>
+          <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
+            Paper search across arXiv, OpenAlex, Semantic Scholar and PubMed is free and
+            needs no key. General web search does — every usable API is paid, and
+            scraping a search engine is not something this app will do.
+          </div>
+
+          <Row label="Images">
+            <select
+              value={providers.settings.imageProvider}
+              onChange={(e) => {
+                // Same rule as the model picker: never leave a model id behind that
+                // the newly selected provider does not recognise.
+                const next = IMAGE_PROVIDERS.find((p) => p.id === e.target.value);
+                providers.update({
+                  imageProvider: e.target.value,
+                  ...(next?.freeformModel
+                    ? {}
+                    : next?.models[0]
+                      ? { imageModel: next.models[0].id }
+                      : {}),
+                });
+              }}
+              style={selectStyle}
+            >
+              {IMAGE_PROVIDERS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </Row>
+          {img?.freeformModel ? (
+            <>
+              <Row label="Endpoint">
+                <input
+                  value={providers.settings.imageBaseUrl}
+                  onChange={(e) => providers.update({ imageBaseUrl: e.target.value })}
+                  placeholder="http://127.0.0.1:8080/v1"
+                  style={{ ...selectStyle, fontFamily: "var(--font-mono)", fontSize: 13 }}
+                />
+              </Row>
+              <Row label="Model">
+                <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input
+                    list="burrow-local-image-models"
+                    value={providers.settings.imageModel}
+                    onChange={(e) => providers.update({ imageModel: e.target.value })}
+                    placeholder="e.g. stablediffusion"
+                    style={{ ...selectStyle, fontFamily: "var(--font-mono)", fontSize: 13 }}
+                  />
+                  <datalist id="burrow-local-image-models">
+                    {imageFound.map((m) => (
+                      <option key={m} value={m} />
+                    ))}
+                  </datalist>
+                  <button
+                    onClick={() => void detectImages()}
+                    disabled={detectingImage}
+                    title="Ask the endpoint which models it serves"
+                    style={{
+                      whiteSpace: "nowrap",
+                      padding: "6px 11px",
+                      borderRadius: "var(--r-sm)",
+                      fontSize: 13,
+                      border: "1px solid var(--border)",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {detectingImage ? "…" : "Detect"}
+                  </button>
+                </span>
+              </Row>
+              <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
+                Any server speaking the OpenAI images API — LocalAI, LiteLLM, a gateway,
+                or a Stable Diffusion front-end that exposes it. It must return base64;
+                a link-only endpoint cannot be stored in the workspace.
+              </div>
+            </>
+          ) : (
+            <Row label="Model">
+              <select
+                value={providers.settings.imageModel}
+                onChange={(e) => providers.update({ imageModel: e.target.value })}
+                style={selectStyle}
+              >
+                {(img?.models ?? []).map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </Row>
+          )}
         </Section>
 
         <Section title="API keys">

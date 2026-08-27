@@ -34,6 +34,7 @@ pub fn run() {
             workspace::search_workspaces,
             documents::import_document,
             documents::import_image,
+            documents::write_image,
             documents::list_documents,
             documents::read_document_text,
             documents::read_image_data_url,

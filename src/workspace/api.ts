@@ -102,6 +102,20 @@ export const importDocument = (root: string, id: string, source: string) =>
 export const importImage = (root: string, id: string, source: string) =>
   invoke<DocumentInfo>("import_image", { root, id, source });
 
+/**
+ * Write generated image bytes into <workspace>/images/ (spec H).
+ *
+ * `stem` is a naming hint, not a path — the Rust side reduces it to safe
+ * characters and suffixes it if taken. Returns the name it actually landed under.
+ */
+export const writeImage = (
+  root: string,
+  id: string,
+  stem: string,
+  ext: string,
+  base64Data: string,
+) => invoke<DocumentInfo>("write_image", { root, id, stem, ext, base64Data });
+
 export const listDocuments = (root: string, id: string) =>
   invoke<DocumentInfo[]>("list_documents", { root, id });
 

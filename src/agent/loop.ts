@@ -2,7 +2,7 @@ import { useBoard } from "../canvas/store";
 import { isSparse, serializeBoard } from "../canvas/serialize";
 import { activeLLM, keyFor, useProviders } from "../providers/registry";
 import type { Turn } from "../providers/types";
-import { TOOLS, runTool } from "./tools";
+import { availableTools, runTool } from "./tools";
 
 /**
  * One conversational turn: user says something, the model may call tools, tools
@@ -68,7 +68,9 @@ export async function runTurn(
       // Rebuilt each step so the model sees the board it just changed.
       system: systemPrompt(),
       messages,
-      tools: TOOLS,
+      // Recomputed each step: a capability the user configures mid-conversation
+      // should become usable without restarting the turn.
+      tools: availableTools(),
     });
 
     if (!reply.wantsTools || reply.toolCalls.length === 0) {

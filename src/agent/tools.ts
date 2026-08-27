@@ -5,8 +5,17 @@ import { boardCentre, boundsOf, findFreeSpot } from "../canvas/placement";
 import { isSparse } from "../canvas/serialize";
 import { DEFAULT_SIZE, type Block, type XY } from "../canvas/types";
 import { useCurrentWorkspace } from "../workspace/current";
-import { listDocuments, readDocumentText } from "../workspace/api";
+import { listDocuments, readDocumentText, writeImage } from "../workspace/api";
 import { SOURCES, formatPaper, searchPapers, type Source } from "./research";
+import {
+  activeImage,
+  activeSearch,
+  canGenerateImages,
+  canSearchWeb,
+  keyFor,
+  useProviders,
+} from "../providers/registry";
+import { formatResult } from "../providers/search";
 
 /**
  * The assistant's vocabulary.
@@ -156,6 +165,40 @@ export const TOOLS: ToolSpec[] = [
     },
   },
   {
+    name: "search_web",
+    description:
+      "Search the general web — current events, documentation, blog posts, anything that is not " +
+      "an academic paper. Use search_papers instead when the user wants literature. Returns titles, " +
+      "links and short snippets, not page contents: do not claim to have read a page you have only " +
+      "seen a snippet of.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: str("What to search for."),
+        limit: num("How many results, 1 to 20. Defaults to 6."),
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "generate_image",
+    description:
+      "Generate an image from a description and place it on the board — a diagram sketch, an " +
+      "illustration, a concept render. Not for charts of real data, which belong in a table, and " +
+      "not for anything the user needs to be factually accurate. Describe the image fully in the " +
+      "prompt; the generator cannot see the board or the conversation.",
+    parameters: {
+      type: "object",
+      properties: {
+        prompt: str("Full description of the image to make. Detail helps."),
+        title: str("Short caption shown under the image on the board."),
+        x: num("Optional canvas x. Omit to auto-place."),
+        y: num("Optional canvas y. Omit to auto-place."),
+      },
+      required: ["prompt"],
+    },
+  },
+  {
     name: "add_frame",
     description:
       "Draw a labelled frame to group related blocks. If the board already has the user's work on " +
@@ -235,6 +278,22 @@ export const TOOLS: ToolSpec[] = [
     },
   },
 ];
+
+/**
+ * The tools worth offering right now.
+ *
+ * A tool the user has no key for cannot succeed, and offering it anyway costs a
+ * whole step: the model calls it, gets an explanation back, and has to try
+ * something else — which the smallest local models handle badly. The dispatch
+ * cases still check, because settings can change mid-conversation.
+ */
+export function availableTools(): ToolSpec[] {
+  const gated: Record<string, () => boolean> = {
+    search_web: canSearchWeb,
+    generate_image: canGenerateImages,
+  };
+  return TOOLS.filter((t) => gated[t.name]?.() ?? true);
+}
 
 /* ---------- dispatch ---------- */
 
@@ -428,6 +487,83 @@ export async function runTool(call: ToolCall): Promise<ToolResult> {
           ? `\n\n[${failed.map((f) => f.source).join(" and ")} could not be reached, so these results are incomplete.]`
           : "";
         return ok(call.id, `${papers.length} result(s) for "${query}":\n\n${body}${note}`);
+      }
+
+      case "search_web": {
+        const query = String(a.query ?? "").trim();
+        if (!query) return fail(call.id, "What should I search for?");
+        // Spec E: an unconfigured capability explains itself rather than failing
+        // obscurely, so the model can tell the user what to do about it.
+        if (!canSearchWeb()) {
+          return fail(
+            call.id,
+            "Web search is not configured. The user needs to add a Brave Search or Tavily key in " +
+              "Settings. Paper search still works without one — offer search_papers instead.",
+          );
+        }
+
+        const provider = activeSearch();
+        const limit = Math.max(1, Math.min(typeof a.limit === "number" ? a.limit : 6, 20));
+        const apiKey = await keyFor(provider.id);
+        const results = await provider.search({ apiKey, query, limit });
+        if (results.length === 0) return ok(call.id, `No web results for "${query}".`);
+        return ok(
+          call.id,
+          `${results.length} result(s) for "${query}" via ${provider.label}:\n\n` +
+            results.map(formatResult).join("\n\n"),
+        );
+      }
+
+      case "generate_image": {
+        const prompt = String(a.prompt ?? "").trim();
+        if (!prompt) return fail(call.id, "What should the image show?");
+
+        const { root, id: wsId } = useCurrentWorkspace.getState();
+        if (!root || !wsId) return fail(call.id, "No workspace is open.");
+        if (!canGenerateImages()) {
+          return fail(
+            call.id,
+            "Image generation is not configured. The user needs to pick an image provider and " +
+              "model in Settings, and add its key — or point the Custom option at a local image " +
+              "server. Tell them that rather than trying again.",
+          );
+        }
+
+        const provider = activeImage();
+        const { imageModel } = useProviders.getState().settings;
+        const apiKey = await keyFor(provider.id, provider.keyOptional);
+        const { base64, ext } = await provider.generate({ apiKey, model: imageModel, prompt });
+
+        // Written to the workspace folder, not inlined into the board: board.json
+        // has to stay a file the user can open, and it is also what the assistant
+        // reads on every turn.
+        const title = String(a.title ?? "").trim() || prompt.slice(0, 60);
+        const saved = await writeImage(root, wsId, title || "generated", ext, base64);
+
+        const size = DEFAULT_SIZE.image;
+        const explicit = typeof a.x === "number" && typeof a.y === "number";
+        const pos = explicit
+          ? { x: a.x as number, y: a.y as number }
+          : findFreeSpot(board, size, anchor());
+        const id = `image-${nanoid(8)}`;
+        run({
+          t: "addBlock",
+          block: {
+            id,
+            type: "image",
+            position: pos,
+            width: size.width,
+            height: size.height,
+            zIndex: 1,
+            // The prompt is kept on the block: months later it is the only record
+            // of why the picture looks the way it does.
+            data: { title, file: saved.file, prompt },
+          } as Block,
+        });
+        return ok(
+          call.id,
+          `Generated "${title}" with ${provider.label} and placed it on the board (id ${id}, saved as ${saved.file}).`,
+        );
       }
 
       case "add_frame": {
