@@ -1,7 +1,6 @@
 import {
   ArrowLeft,
   ArrowUp,
-  Brain,
   Check,
   Circle,
   Eraser,
@@ -9,6 +8,7 @@ import {
   FileText,
   Frame,
   Image as ImageIcon,
+  Info,
   Maximize2,
   Mic,
   Minus,
@@ -27,6 +27,7 @@ import {
   Trash2,
   Type,
   Undo2,
+  Upload,
   Volume2,
   VolumeX,
   Workflow,
@@ -57,8 +58,9 @@ export const Icons = {
   check: Check,
   external: ExternalLink,
   trash: Trash2,
-  logo: Brain,
   add: Plus,
+  info: Info,
+  upload: Upload,
 
   // canvas controls
   undo: Undo2,
@@ -112,4 +114,33 @@ export function Icon({
 }) {
   const Cmp = Icons[name];
   return <Cmp size={size} strokeWidth={strokeWidth} style={{ display: "block", ...style }} />;
+}
+
+/**
+ * The app mark: a tunnel mouth receding into the ground, three nested arches at
+ * decreasing lightness so it still reads as "depth" at small sizes. Same artwork
+ * as `src-tauri/icons/burrow.svg`, including its own purple ground square — the
+ * arches need that fixed dark backdrop for contrast, so this draws its own
+ * background rather than sitting on the theme's accent colour, which can be
+ * near-white and washes the whole mark out.
+ */
+export function BurrowMark({ size = 19, style }: { size?: number; style?: React.CSSProperties }) {
+  return (
+    <svg viewBox="0 0 512 512" width={size} height={size} style={{ display: "block", ...style }}>
+      <defs>
+        <linearGradient id="burrow-mark-ground" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#8b6dff" />
+          <stop offset="100%" stopColor="#5b3fd1" />
+        </linearGradient>
+        <linearGradient id="burrow-mark-depth" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#2a1b6b" />
+          <stop offset="100%" stopColor="#120b33" />
+        </linearGradient>
+      </defs>
+      <rect width={512} height={512} rx={114} fill="url(#burrow-mark-ground)" />
+      <path d="M136 396 V268 a120 120 0 0 1 240 0 V396 Z" fill="#ffffff" opacity={0.94} />
+      <path d="M176 396 V276 a80 80 0 0 1 160 0 V396 Z" fill="#a48cff" opacity={0.85} />
+      <path d="M214 396 V284 a42 42 0 0 1 84 0 V396 Z" fill="url(#burrow-mark-depth)" />
+    </svg>
+  );
 }

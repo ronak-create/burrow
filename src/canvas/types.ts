@@ -83,6 +83,8 @@ export type ShapeData = {
   variant: "rectangle" | "ellipse";
   /** Palette key from the ink palette, so shapes and strokes share one set of colours. */
   color?: string;
+  /** Border thickness in px. */
+  strokeWidth?: number;
   /** Transparent by default: shapes are usually annotation, not fill. */
   filled?: boolean;
   label?: string;

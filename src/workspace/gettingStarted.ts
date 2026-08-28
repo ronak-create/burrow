@@ -153,7 +153,7 @@ export function seedGettingStarted(root: string): Promise<WorkspaceMeta | null> 
 
   inFlight = (async () => {
     try {
-      const ws = await createWorkspace(root, GETTING_STARTED_NAME, ["guide"], true);
+      const ws = await createWorkspace(root, GETTING_STARTED_NAME, [], true);
       await writeBoard(root, ws.id, tutorialBoard());
       localStorage.setItem(SEEDED_KEY, "1");
       return ws;

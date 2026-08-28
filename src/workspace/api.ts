@@ -119,6 +119,9 @@ export const writeImage = (
 export const listDocuments = (root: string, id: string) =>
   invoke<DocumentInfo[]>("list_documents", { root, id });
 
+export const listImages = (root: string, id: string) =>
+  invoke<DocumentInfo[]>("list_images", { root, id });
+
 /** Extracted plain text — what the reader shows and what the assistant is given. */
 export const readDocumentText = (root: string, id: string, file: string) =>
   invoke<string>("read_document_text", { root, id, file });
@@ -128,6 +131,9 @@ export const readImageDataUrl = (root: string, id: string, file: string) =>
 
 export const deleteDocument = (root: string, id: string, file: string) =>
   invoke<void>("delete_document", { root, id, file });
+
+export const deleteImage = (root: string, id: string, file: string) =>
+  invoke<void>("delete_image", { root, id, file });
 
 /* ---------- global search (spec C) ---------- */
 

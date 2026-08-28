@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 
 import Board from "../canvas/Board";
@@ -6,7 +6,7 @@ import AssistantPanel from "./AssistantPanel";
 import Settings from "./Settings";
 import { useCanvasMode, type CanvasMode } from "../canvas/ink/mode";
 import { Icon, type IconName } from "../ui/icons";
-import { INK_COLORS, INK_SIZES, inkColor } from "../canvas/ink/stroke";
+import { INK_COLORS, INK_SIZES, SHAPE_STROKE_WIDTHS, inkColor } from "../canvas/ink/stroke";
 import { useBoard } from "../canvas/store";
 import { type BlockKind } from "../canvas/types";
 import { useAutosave, saveNow } from "../workspace/persist";
@@ -14,7 +14,7 @@ import { useCurrentWorkspace } from "../workspace/current";
 import DocumentViewer from "./DocumentViewer";
 import DocumentsPanel from "./DocumentsPanel";
 import { toastError } from "../ui/toast";
-import type { WorkspaceMeta } from "../workspace/api";
+import { updateWorkspaceMeta, type WorkspaceMeta } from "../workspace/api";
 
 /** Which shape variant the toolbar's shape buttons create. */
 type ToolSpec = { kind: BlockKind; label: string; icon: IconName; variant?: "rectangle" | "ellipse" };
@@ -40,12 +40,59 @@ const TOOLS: ToolSpec[] = [
 function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; onBack: () => void }) {
   const undo = useBoard((s) => s.undo);
   const redo = useBoard((s) => s.redo);
-  const dirty = useBoard((s) => s.dirty);
   const past = useBoard((s) => s.past.length);
   const { zoomIn, zoomOut, fitView, getZoom } = useReactFlow();
   const [showSettings, setShowSettings] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
   const [showPanel, setShowPanel] = useState(true);
+  const [name, setName] = useState(ws.name);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(ws.name);
+
+  async function renameWorkspace() {
+    const next = nameDraft.trim();
+    setEditingName(false);
+    if (!next || next === name) {
+      setNameDraft(name);
+      return;
+    }
+    try {
+      await updateWorkspaceMeta(root, ws.id, { name: next });
+      setName(next);
+    } catch (e) {
+      setNameDraft(name);
+      toastError(e);
+    }
+  }
+  const [panelWidth, setPanelWidth] = useState(() => {
+    const saved = Number(localStorage.getItem("burrow.assistantWidth"));
+    return saved >= 260 && saved <= 640 ? saved : 340;
+  });
+  const splitRef = useRef<HTMLDivElement>(null);
+  const resizing = useRef(false);
+
+  const onResizerDown = (e: React.PointerEvent) => {
+    resizing.current = true;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onResizerMove = (e: React.PointerEvent) => {
+    if (!resizing.current || !splitRef.current) return;
+    const rect = splitRef.current.getBoundingClientRect();
+    setPanelWidth(Math.min(640, Math.max(260, rect.right - e.clientX)));
+  };
+  const onResizerUp = (e: React.PointerEvent) => {
+    if (!resizing.current) return;
+    resizing.current = false;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* pointer already gone */
+    }
+    setPanelWidth((w) => {
+      localStorage.setItem("burrow.assistantWidth", String(w));
+      return w;
+    });
+  };
   const mode = useCanvasMode((s) => s.mode);
   const setMode = useCanvasMode((s) => s.setMode);
   const pending = useCanvasMode((s) => s.pending);
@@ -149,33 +196,40 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
         <button onClick={() => void back()} style={iconBtn} title="Back to workspaces">
           <Icon name="back" />
         </button>
-        <span style={{ fontWeight: 600, fontSize: 15 }}>{ws.name}</span>
-        {ws.tags.map((t) => (
-          <span
-            key={t}
-            style={{
-              fontSize: 11,
-              padding: "2px 7px",
-              borderRadius: 4,
-              background: "var(--surface-2)",
-              color: "var(--text-muted)",
+        {editingName ? (
+          <input
+            autoFocus
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            onFocus={(e) => e.currentTarget.select()}
+            onBlur={() => void renameWorkspace()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+              if (e.key === "Escape") {
+                setNameDraft(name);
+                setEditingName(false);
+              }
             }}
+            style={{
+              fontWeight: 600,
+              fontSize: 15,
+              background: "var(--surface-2)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-sm)",
+              padding: "3px 6px",
+              outline: "none",
+              minWidth: 120,
+            }}
+          />
+        ) : (
+          <span
+            onClick={() => setEditingName(true)}
+            title="Click to rename"
+            style={{ fontWeight: 600, fontSize: 15, cursor: "text", padding: "3px 6px" }}
           >
-            {t}
+            {name}
           </span>
-        ))}
-
-        <span
-          title={dirty ? "Unsaved changes" : "Saved"}
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: 99,
-            marginLeft: 4,
-            background: dirty ? "var(--warn)" : "var(--ok)",
-            opacity: 0.8,
-          }}
-        />
+        )}
 
         <div style={{ flex: 1 }} />
 
@@ -194,8 +248,8 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
         <button onClick={() => fitView({ padding: 0.2 })} style={iconBtn} title="Fit to content">
           <Icon name="fit" />
         </button>
-        <button onClick={() => setShowDocs(true)} style={iconBtn} title="Documents">
-          <Icon name="doc" />
+        <button onClick={() => setShowDocs(true)} style={iconBtn} title="Files">
+          <Icon name="upload" />
         </button>
         <button onClick={() => setShowSettings(true)} style={iconBtn} title="Settings">
           <Icon name="settings" />
@@ -209,11 +263,12 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
         </button>
       </header>
 
-      <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+      <div ref={splitRef} style={{ flex: 1, display: "flex", minHeight: 0 }}>
         <div style={{ flex: 1, position: "relative", minWidth: 0 }}>
           <Board />
 
           {mode === "draw" && <InkPalette />}
+          {mode === "place" && pending?.kind === "shape" && <ShapePalette />}
 
           <div
             style={{
@@ -293,7 +348,36 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
           </div>
         </div>
 
-        {showPanel && <AssistantPanel root={root} wsId={ws.id} />}
+        {showPanel && (
+          <>
+            <div
+              onPointerDown={onResizerDown}
+              onPointerMove={onResizerMove}
+              onPointerUp={onResizerUp}
+              onPointerCancel={onResizerUp}
+              style={{
+                width: 5,
+                flexShrink: 0,
+                cursor: "col-resize",
+                position: "relative",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  left: 2,
+                  top: 0,
+                  bottom: 0,
+                  width: 1,
+                  background: "var(--border)",
+                }}
+              />
+            </div>
+            <div style={{ width: panelWidth, flexShrink: 0, minWidth: 0 }}>
+              <AssistantPanel root={root} wsId={ws.id} />
+            </div>
+          </>
+        )}
       </div>
 
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
@@ -361,6 +445,73 @@ function InkPalette() {
               height: s + 2,
               borderRadius: 99,
               background: inkColor(color),
+              display: "block",
+            }}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Colour and border thickness, shown only while a shape tool is armed. */
+function ShapePalette() {
+  const { color, shapeStrokeWidth, setColor, setShapeStrokeWidth } = useCanvasMode();
+  return (
+    <div
+      style={{
+        position: "absolute",
+        bottom: 88,
+        left: "50%",
+        transform: "translateX(-50%)",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "7px 12px",
+        background: "var(--surface-2)",
+        border: "1px solid var(--border)",
+        borderRadius: 99,
+        boxShadow: "var(--shadow-pop)",
+      }}
+    >
+      {INK_COLORS.map((c) => (
+        <button
+          key={c.key}
+          title={c.label}
+          onClick={() => setColor(c.key)}
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: 99,
+            background: c.value,
+            outline: color === c.key ? "2px solid var(--text)" : "none",
+            outlineOffset: 2,
+          }}
+        />
+      ))}
+
+      <span style={{ width: 1, height: 18, background: "var(--border)" }} />
+
+      {SHAPE_STROKE_WIDTHS.map((w) => (
+        <button
+          key={w}
+          title={`${w}px border`}
+          onClick={() => setShapeStrokeWidth(w)}
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: "var(--r-sm)",
+            display: "grid",
+            placeItems: "center",
+            background: shapeStrokeWidth === w ? "var(--card-hover)" : "transparent",
+          }}
+        >
+          <span
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: 3,
+              border: `${w}px solid ${inkColor(color)}`,
               display: "block",
             }}
           />

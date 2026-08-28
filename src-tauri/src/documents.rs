@@ -162,9 +162,8 @@ pub fn write_image(
     })
 }
 
-#[tauri::command]
-pub fn list_documents(root: String, id: String) -> Result<Vec<DocumentInfo>, String> {
-    let dir = ws_dir(&root, &id).join("documents");
+fn list_dir(root: &str, id: &str, sub: &str) -> Result<Vec<DocumentInfo>, String> {
+    let dir = ws_dir(root, id).join(sub);
     if !dir.exists() {
         return Ok(vec![]);
     }
@@ -183,6 +182,16 @@ pub fn list_documents(root: String, id: String) -> Result<Vec<DocumentInfo>, Str
     }
     out.sort_by(|a, b| a.file.to_lowercase().cmp(&b.file.to_lowercase()));
     Ok(out)
+}
+
+#[tauri::command]
+pub fn list_documents(root: String, id: String) -> Result<Vec<DocumentInfo>, String> {
+    list_dir(&root, &id, "documents")
+}
+
+#[tauri::command]
+pub fn list_images(root: String, id: String) -> Result<Vec<DocumentInfo>, String> {
+    list_dir(&root, &id, "images")
 }
 
 /// Pull readable text out of a .docx.
@@ -306,14 +315,23 @@ pub fn read_image_data_url(root: String, id: String, file: String) -> Result<Str
     Ok(format!("data:{mime};base64,{b64}"))
 }
 
-#[tauri::command]
-pub fn delete_document(root: String, id: String, file: String) -> Result<(), String> {
-    let name = safe_name(&file)?;
-    let path = ws_dir(&root, &id).join("documents").join(name);
+fn delete_in(root: &str, id: &str, sub: &str, file: &str) -> Result<(), String> {
+    let name = safe_name(file)?;
+    let path = ws_dir(root, id).join(sub).join(name);
     if path.exists() {
         fs::remove_file(&path).map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+#[tauri::command]
+pub fn delete_document(root: String, id: String, file: String) -> Result<(), String> {
+    delete_in(&root, &id, "documents", &file)
+}
+
+#[tauri::command]
+pub fn delete_image(root: String, id: String, file: String) -> Result<(), String> {
+    delete_in(&root, &id, "images", &file)
 }
 
 #[cfg(test)]

@@ -18,6 +18,9 @@ export const INK_COLORS = [
 
 export const INK_SIZES = [3, 6, 12] as const;
 
+/** Border thickness options for the rectangle/ellipse shape tools, in px. */
+export const SHAPE_STROKE_WIDTHS = [1, 2, 4] as const;
+
 /** Tuned for a research board: expressive, but not so springy that arrows wobble. */
 const OPTIONS = {
   thinning: 0.55,

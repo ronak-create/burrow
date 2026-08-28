@@ -137,8 +137,8 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
   return (
     <aside
       style={{
-        width: 340,
-        flexShrink: 0,
+        width: "100%",
+        height: "100%",
         borderLeft: "1px solid var(--border)",
         background: "var(--surface)",
         display: "flex",
@@ -148,7 +148,6 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
     >
       <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <StatusOrb status={status} />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 600 }}>Research Assistant</div>
             <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{statusLabel[status]}</div>
@@ -275,43 +274,5 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
         </button>
       </div>
     </aside>
-  );
-}
-
-/**
- * Always-visible state indicator. Spec D treats mic ambiguity as unacceptable, so
- * this never hides — it changes colour and pulses rather than appearing only when active.
- */
-function StatusOrb({ status }: { status: Status }) {
-  const colour =
-    status === "listening"
-      ? "var(--danger)"
-      : status === "thinking" || status === "transcribing"
-        ? "var(--warn)"
-        : status === "speaking"
-          ? "var(--accent)"
-          : "var(--text-faint)";
-  const animated = status !== "idle";
-
-  return (
-    <>
-      <style>{`@keyframes rc-pulse {
-        0%   { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
-        70%  { box-shadow: 0 0 0 7px transparent; opacity: .75; }
-        100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
-      }`}</style>
-      <span
-        aria-label={status}
-        style={{
-          width: 11,
-          height: 11,
-          borderRadius: 99,
-          background: colour,
-          color: colour,
-          flexShrink: 0,
-          animation: animated ? "rc-pulse 1.4s ease-out infinite" : "none",
-        }}
-      />
-    </>
   );
 }

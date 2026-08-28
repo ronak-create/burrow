@@ -45,7 +45,7 @@ export default function ShapeBlockView({ id, data, selected }: NodeProps<ShapeBl
         style={{
           width: "100%",
           height: "100%",
-          border: `2px solid ${stroke}`,
+          border: `${data.strokeWidth ?? 2}px solid ${stroke}`,
           borderRadius: round,
           // A filled shape uses the stroke colour at low alpha rather than a second
           // colour setting, so one palette choice covers both.

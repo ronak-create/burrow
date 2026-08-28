@@ -16,12 +16,19 @@ import { Icon } from "../ui/icons";
 import { toastError, toastWarn } from "../ui/toast";
 import { listCustomModels } from "../providers/llm/custom";
 import { listCustomImageModels } from "../providers/image";
-import { ACCENTS, resolvedTheme, useAccent, useTheme, type ThemePref } from "../ui/theme";
+import { ACCENTS, useAccent, useTheme, type ThemePref } from "../ui/theme";
 
 const THEMES: Array<{ pref: ThemePref; label: string }> = [
   { pref: "system", label: "System" },
   { pref: "light", label: "Light" },
   { pref: "dark", label: "Dark" },
+];
+
+type SettingsTab = "appearance" | "canvas" | "api";
+const TABS: Array<{ id: SettingsTab; label: string }> = [
+  { id: "appearance", label: "Appearance" },
+  { id: "canvas", label: "Canvas" },
+  { id: "api", label: "API config" },
 ];
 
 /**
@@ -41,6 +48,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
   const [detecting, setDetecting] = useState(false);
   const [imageFound, setImageFound] = useState<string[]>([]);
   const [detectingImage, setDetectingImage] = useState(false);
+  const [tab, setTab] = useState<SettingsTab>("appearance");
 
   async function detect() {
     setDetecting(true);
@@ -189,13 +197,36 @@ export default function Settings({ onClose }: { onClose: () => void }) {
         <h2 style={{ fontSize: 16, margin: 0, fontWeight: 600 }}>Settings</h2>
       </header>
 
+      <div
+        style={{
+          display: "flex",
+          gap: 4,
+          padding: "0 22px",
+          borderBottom: "1px solid var(--border)",
+          background: "var(--surface)",
+        }}
+      >
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            style={{
+              padding: "10px 14px",
+              fontSize: 13,
+              fontWeight: 500,
+              color: tab === t.id ? "var(--text)" : "var(--text-muted)",
+              borderBottom: `2px solid ${tab === t.id ? "var(--accent)" : "transparent"}`,
+              marginBottom: -1,
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       <div style={{ flex: 1, overflowY: "auto" }}>
         <div style={{ maxWidth: 620, margin: "0 auto", padding: "24px 22px 60px" }}>
-        <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 22px" }}>
-          You bring your own keys. They are stored in your operating system's keychain, never in a
-          file, and are sent only to the provider they belong to.
-        </p>
-
+        {tab === "appearance" && (
         <Section title="Appearance">
           <Row label="Theme">
             <div style={{ display: "flex", gap: 4 }}>
@@ -217,15 +248,10 @@ export default function Settings({ onClose }: { onClose: () => void }) {
               ))}
             </div>
           </Row>
-          {theme.pref === "system" && (
-            <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
-              Following your OS setting — currently {resolvedTheme(theme.pref)}.
-            </div>
-          )}
 
           <Row label="Accent">
-            <div style={{ display: "flex", gap: 6 }}>
-              {ACCENTS.map((a) => (
+            <div style={{ display: "flex" }}>
+              {ACCENTS.map((a, i) => (
                 <button
                   key={a.pref}
                   onClick={() => accent.setAccent(a.pref)}
@@ -233,27 +259,135 @@ export default function Settings({ onClose }: { onClose: () => void }) {
                   aria-label={a.label}
                   aria-pressed={accent.accent === a.pref}
                   style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 99,
+                    width: 32,
+                    height: 32,
+                    display: "grid",
+                    placeItems: "center",
                     background: a.swatch,
-                    // The selected swatch gets a ring drawn in the page background
-                    // so it reads against any colour, including near-white.
-                    boxShadow:
-                      accent.accent === a.pref
-                        ? "0 0 0 2px var(--bg), 0 0 0 4px var(--text)"
-                        : "none",
+                    border: "1px solid var(--border)",
+                    borderLeft: i === 0 ? "1px solid var(--border)" : "none",
+                    borderTopLeftRadius: i === 0 ? "var(--r-sm)" : 0,
+                    borderBottomLeftRadius: i === 0 ? "var(--r-sm)" : 0,
+                    borderTopRightRadius: i === ACCENTS.length - 1 ? "var(--r-sm)" : 0,
+                    borderBottomRightRadius: i === ACCENTS.length - 1 ? "var(--r-sm)" : 0,
                   }}
-                />
+                >
+                  {accent.accent === a.pref && (
+                    <Icon
+                      name="check"
+                      size={14}
+                      style={{ color: "#fff", filter: "drop-shadow(0 0 1.5px rgba(0,0,0,0.7))" }}
+                    />
+                  )}
+                </button>
               ))}
             </div>
           </Row>
-          <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
-            Monochrome keeps the interface black and white. Any other choice tints
-            selection, active state and primary buttons only.
-          </div>
 
-          <Row label="Canvas">
+          <div
+            style={{
+              marginTop: 10,
+              borderRadius: "var(--r-md)",
+              border: "1px solid var(--border)",
+              background: "var(--surface)",
+              overflow: "hidden",
+            }}
+          >
+            {/* Title bar: a few tab placeholders, and the traffic lights every
+                mock browser chrome uses — decorative, not accent-tinted. */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "10px 14px",
+                background: "var(--surface-2)",
+                borderBottom: "1px solid var(--border)",
+              }}
+            >
+              {[46, 46, 46].map((w, i) => (
+                <span
+                  key={i}
+                  style={{ width: w, height: 8, borderRadius: 99, background: "var(--border-strong)" }}
+                />
+              ))}
+              <span style={{ flex: 1 }} />
+              <span style={{ width: 9, height: 9, borderRadius: 99, background: "#3ecf8e" }} />
+              <span style={{ width: 9, height: 9, borderRadius: 99, background: "#e5484d" }} />
+            </div>
+
+            {/* Body: a highlighted row in the current accent, plain rows beside
+                it, and a blank side panel — enough of a "screen" to read the
+                colour the way it will actually sit against the UI. */}
+            <div style={{ display: "flex", gap: 10, padding: 14 }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                <span
+                  style={{
+                    width: 120,
+                    height: 8,
+                    borderRadius: 99,
+                    background: "var(--border-strong)",
+                    marginBottom: 4,
+                  }}
+                />
+                <div
+                  style={{
+                    height: 30,
+                    borderRadius: "var(--r-sm)",
+                    background: "var(--accent-wash)",
+                    border: "1px solid var(--accent-line)",
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "0 10px",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: "60%",
+                      height: 7,
+                      borderRadius: 99,
+                      background: "var(--accent)",
+                    }}
+                  />
+                </div>
+                {[1, 2].map((i) => (
+                  <div
+                    key={i}
+                    style={{
+                      height: 30,
+                      borderRadius: "var(--r-sm)",
+                      background: "var(--surface-2)",
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "0 10px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: "45%",
+                        height: 7,
+                        borderRadius: 99,
+                        background: "var(--border-strong)",
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div
+                style={{
+                  width: 56,
+                  borderRadius: "var(--r-sm)",
+                  background: "var(--surface-2)",
+                }}
+              />
+            </div>
+          </div>
+        </Section>
+        )}
+
+        {tab === "canvas" && (
+        <Section title="Canvas">
+          <Row label="Pattern">
             <div style={{ display: "flex", gap: 4 }}>
               {(["dots", "grid", "plain"] as const).map((p) => {
                 const on = providers.settings.canvasPattern === p;
@@ -279,35 +413,95 @@ export default function Settings({ onClose }: { onClose: () => void }) {
           </Row>
 
           <Row label="Canvas shade">
-            <span style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={5}
-                value={providers.settings.canvasShade}
-                onChange={(e) => providers.update({ canvasShade: Number(e.target.value) })}
-                style={{ flex: 1, accentColor: "var(--accent)" }}
-              />
-              <span
-                style={{
-                  fontSize: 12,
-                  color: "var(--text-faint)",
-                  width: 34,
-                  textAlign: "right",
-                  fontFamily: "var(--font-mono)",
-                }}
-              >
-                {providers.settings.canvasShade}%
-              </span>
-            </span>
+            <div style={{ display: "flex", gap: 8 }}>
+              {([0, 100] as const).map((v) => {
+                const on = providers.settings.canvasShade === v;
+                return (
+                  <button
+                    key={v}
+                    onClick={() => providers.update({ canvasShade: v })}
+                    aria-pressed={on}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "6px 12px",
+                      borderRadius: "var(--r-sm)",
+                      fontSize: 13,
+                      border: `1px solid ${on ? "var(--accent-line)" : "var(--border)"}`,
+                      background: on ? "var(--accent-wash)" : "transparent",
+                      color: on ? "var(--accent)" : "var(--text-muted)",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: 99,
+                        border: "1px solid var(--border-strong)",
+                        background: v === 0 ? "#000000" : "#ffffff",
+                      }}
+                    />
+                    {v === 0 ? "Black" : "White"}
+                  </button>
+                );
+              })}
+            </div>
           </Row>
-          <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
-            Lifts the board off the page background. Stored as a position on the
-            theme's own ramp, so it stays correct in both light and dark.
+
+          <div
+            style={{
+              marginTop: 10,
+              height: 160,
+              borderRadius: "var(--r-md)",
+              border: "1px solid var(--border)",
+              position: "relative",
+              overflow: "hidden",
+              background: `color-mix(in srgb, var(--card) ${providers.settings.canvasShade}%, var(--bg))`,
+              backgroundImage:
+                providers.settings.canvasPattern === "dots"
+                  ? "radial-gradient(var(--canvas-dot) 1.6px, transparent 1.6px)"
+                  : providers.settings.canvasPattern === "grid"
+                    ? "linear-gradient(var(--canvas-dot) 1px, transparent 1px), linear-gradient(90deg, var(--canvas-dot) 1px, transparent 1px)"
+                    : "none",
+              backgroundSize:
+                providers.settings.canvasPattern === "plain" ? undefined : "22px 22px",
+            }}
+          >
+            {/* A couple of block placeholders, so the pattern reads as a canvas
+                backdrop rather than an abstract swatch. */}
+            <div
+              style={{
+                position: "absolute",
+                top: 20,
+                left: 20,
+                width: 70,
+                height: 44,
+                borderRadius: "var(--r-sm)",
+                background: "var(--card)",
+                border: "1px solid var(--border-strong)",
+                boxShadow: "var(--shadow-pop)",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                top: 72,
+                left: 110,
+                width: 90,
+                height: 56,
+                borderRadius: "var(--r-sm)",
+                background: "var(--card)",
+                border: "1px solid var(--accent-line)",
+                boxShadow: "var(--shadow-pop)",
+              }}
+            />
           </div>
         </Section>
+        )}
 
+        {tab === "api" && (
+        <>
         <Section title="What's working">
           {capabilities.map((c) => (
             <div key={c.label} style={{ display: "flex", alignItems: "center", gap: 9, padding: "5px 0" }}>
@@ -437,23 +631,21 @@ export default function Settings({ onClose }: { onClose: () => void }) {
 
         <Section title="Research and images">
           <Row label="Web search">
-            <select
-              value={providers.settings.searchProvider}
-              onChange={(e) => providers.update({ searchProvider: e.target.value })}
-              style={selectStyle}
-            >
-              {SEARCH_PROVIDERS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <select
+                value={providers.settings.searchProvider}
+                onChange={(e) => providers.update({ searchProvider: e.target.value })}
+                style={selectStyle}
+              >
+                {SEARCH_PROVIDERS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+              <InfoTip text="Paper search across arXiv, OpenAlex, Semantic Scholar and PubMed is free and needs no key. General web search does — every usable API is paid, and scraping a search engine is not something this app will do." />
+            </span>
           </Row>
-          <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
-            Paper search across arXiv, OpenAlex, Semantic Scholar and PubMed is free and
-            needs no key. General web search does — every usable API is paid, and
-            scraping a search engine is not something this app will do.
-          </div>
 
           <Row label="Images">
             <select
@@ -612,6 +804,8 @@ export default function Settings({ onClose }: { onClose: () => void }) {
             );
           })}
         </Section>
+        </>
+        )}
 
         </div>
       </div>
@@ -652,5 +846,55 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <span style={{ fontSize: 14, flex: 1 }}>{label}</span>
       {children}
     </div>
+  );
+}
+
+/** An (i) button that reveals a wrapped block of text beside it — nothing else. */
+function InfoTip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span style={{ position: "relative", display: "inline-flex" }}>
+      <button
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onClick={() => setOpen((v) => !v)}
+        aria-label="More info"
+        style={{
+          display: "grid",
+          placeItems: "center",
+          width: 22,
+          height: 22,
+          borderRadius: 99,
+          color: "var(--text-faint)",
+          flexShrink: 0,
+        }}
+      >
+        <Icon name="info" size={14} />
+      </button>
+      {open && (
+        <div
+          role="tooltip"
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "calc(100% + 8px)",
+            transform: "translateY(-50%)",
+            width: 220,
+            padding: "8px 10px",
+            borderRadius: "var(--r-sm)",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            boxShadow: "var(--shadow-pop)",
+            fontSize: 12,
+            lineHeight: 1.5,
+            color: "var(--text-muted)",
+            whiteSpace: "normal",
+            zIndex: 20,
+          }}
+        >
+          {text}
+        </div>
+      )}
+    </span>
   );
 }

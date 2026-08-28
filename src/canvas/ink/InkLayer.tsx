@@ -11,6 +11,20 @@ import { distanceToStroke, inkColor, pathFor } from "./stroke";
 const ERASE_RADIUS = 14;
 
 /**
+ * A pencil-shaped cursor for draw mode — crosshair reads as "aim", not "write".
+ * White-on-dark outline so the tip stays visible over both light and dark canvas
+ * shades; the hotspot sits at the drawn tip, not the SVG's corner.
+ */
+const PENCIL_CURSOR_SVG = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'>
+  <g transform='rotate(45 12 12)'>
+    <rect x='10' y='1' width='4' height='16' rx='1' fill='#ffffff' stroke='#1a1a1a' stroke-width='1.4'/>
+    <rect x='10' y='1' width='4' height='4' fill='#1a1a1a'/>
+    <path d='M10 17 L14 17 L12 23 Z' fill='#e5a13a' stroke='#1a1a1a' stroke-width='1.2' stroke-linejoin='round'/>
+  </g>
+</svg>`;
+const PENCIL_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(PENCIL_CURSOR_SVG)}") 4 20, crosshair`;
+
+/**
  * The hand-drawn layer — the "red string" between findings.
  *
  * Committed strokes render inside ViewportPortal so they live in canvas
@@ -140,7 +154,7 @@ export default function InkLayer() {
             position: "absolute",
             inset: 0,
             zIndex: 5,
-            cursor: mode === "erase" ? "cell" : "crosshair",
+            cursor: mode === "erase" ? "cell" : PENCIL_CURSOR,
             touchAction: "none",
           }}
         />

@@ -32,7 +32,9 @@
 
   --border: #2a2a2a;
   --border-strong: #3d3d3d;
-  --canvas-dot: #242424;
+  /* Alpha over --text rather than a flat grey, so it stays visible against every
+     position on the canvas-shade ramp instead of only the shade it was tuned for. */
+  --canvas-dot: rgba(242, 242, 242, 0.16);
 
   --text: #f2f2f2;
   --text-muted: #909090;
@@ -72,7 +74,7 @@
 
   --border: #e2e2e2;
   --border-strong: #c8c8c8;
-  --canvas-dot: #d8d8d8;
+  --canvas-dot: rgba(13, 13, 13, 0.16);
 
   --text: #0d0d0d;
   --text-muted: #5c5c5c;
@@ -110,7 +112,7 @@
     --card-hover: #f6f6f6;
     --border: #e2e2e2;
     --border-strong: #c8c8c8;
-    --canvas-dot: #d8d8d8;
+    --canvas-dot: rgba(13, 13, 13, 0.16);
     --text: #0d0d0d;
     --text-muted: #5c5c5c;
     --text-faint: #949494;

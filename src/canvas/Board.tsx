@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -78,6 +78,34 @@ export default function Board() {
   const drag = useRef<DragSession | null>(null);
   /** Size each block held when a resize began, keyed by id. */
   const resizeStart = useRef<Map<string, { width?: number; height?: number }>>(new Map());
+
+  // Holding Space is React Flow's built-in temporary-pan key. Left to itself it
+  // still lets a drag that starts on a node move or select that node instead of
+  // panning, so selection and node dragging are explicitly switched off for as
+  // long as the key is held — Space means "just move the canvas".
+  const [spaceActive, setSpaceActive] = useState(false);
+  useEffect(() => {
+    const isTyping = () => {
+      const el = document.activeElement;
+      return (
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        (el as HTMLElement | null)?.isContentEditable
+      );
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === "Space" && !isTyping()) setSpaceActive(true);
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === "Space") setSpaceActive(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, []);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -278,6 +306,12 @@ export default function Board() {
   // reads correctly in dark and light without storing two values.
   const canvasBg = `color-mix(in srgb, var(--card) ${shade}%, var(--bg))`;
 
+  // React Flow marks the pane "draggable" (grab-hand cursor) whenever panOnDrag
+  // is non-empty, even though left-click only pans while Space is held or a pen
+  // is active. In plain select mode that hand is misleading, so it is overridden
+  // back to a normal pointer for just that state.
+  const showSelectCursor = !penActive && !spaceActive;
+
   return (
     <ReactFlow
       nodes={board.nodes as RFNode[]}
@@ -298,10 +332,11 @@ export default function Board() {
       /* Loose mode lets a connection land anywhere on a card rather than forcing
          the user to hit a 7px dot. */
       connectionMode={"loose" as never}
-      selectionOnDrag={!penActive}
-      nodesDraggable={!penActive}
-      nodesConnectable={!penActive}
-      elementsSelectable={!penActive}
+      className={showSelectCursor ? "rf-select-cursor" : undefined}
+      selectionOnDrag={!penActive && !spaceActive}
+      nodesDraggable={!penActive && !spaceActive}
+      nodesConnectable={!penActive && !spaceActive}
+      elementsSelectable={!penActive && !spaceActive}
       // Middle and right drag pan; left is left free for marquee select, or for the
       // pen when one is active. So the board stays navigable without leaving the pen.
       panOnDrag={[1, 2]}
@@ -315,11 +350,16 @@ export default function Board() {
       proOptions={{ hideAttribution: true }}
       style={{ background: canvasBg }}
     >
+      <style>{`.rf-select-cursor .react-flow__pane.draggable { cursor: default; }`}</style>
       {pattern !== "plain" && (
+        // React Flow keys its internal SVG pattern by id, not by variant, so
+        // swapping Lines for Dots in place can leave the old pattern's markup
+        // stuck on screen. A remount per pattern sidesteps that entirely.
         <Background
+          key={pattern}
           variant={pattern === "grid" ? BackgroundVariant.Lines : BackgroundVariant.Dots}
-          gap={22}
-          size={1}
+          gap={36}
+          size={2.5}
           color="var(--canvas-dot)"
         />
       )}

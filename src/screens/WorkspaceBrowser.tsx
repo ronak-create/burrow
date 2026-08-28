@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createWorkspace,
   deleteWorkspace,
@@ -8,14 +8,15 @@ import {
   type SearchHit,
   type WorkspaceMeta,
 } from "../workspace/api";
-import { Icon } from "../ui/icons";
+import { BurrowMark, Icon } from "../ui/icons";
 import Settings from "./Settings";
 import { toastError } from "../ui/toast";
+import { GETTING_STARTED_NAME } from "../workspace/gettingStarted";
 
 /**
  * The first screen: a flat list of workspaces sorted by last opened, filterable by
- * text or tag. No nested folders (spec C) — a researcher's projects are a short
- * list, not a tree, and tags cover the grouping people actually want.
+ * text. No nested folders (spec C) — a researcher's projects are a short list,
+ * not a tree.
  */
 export default function WorkspaceBrowser({
   root,
@@ -26,7 +27,7 @@ export default function WorkspaceBrowser({
 }) {
   const [items, setItems] = useState<WorkspaceMeta[]>([]);
   const [query, setQuery] = useState("");
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const [creating, setCreating] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [hits, setHits] = useState<SearchHit[]>([]);
@@ -57,6 +58,22 @@ export default function WorkspaceBrowser({
     }, 250);
     return () => clearTimeout(t);
   }, [query, root]);
+
+  /** "/" jumps to search, unless the user is already typing somewhere. */
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement;
+      const typing =
+        target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      if (typing) return;
+      e.preventDefault();
+      searchRef.current?.focus();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const [newName, setNewName] = useState("");
   const [newPinned, setNewPinned] = useState(false);
 
@@ -73,15 +90,9 @@ export default function WorkspaceBrowser({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [root]);
 
-  const allTags = useMemo(
-    () => [...new Set(items.flatMap((i) => i.tags))].sort(),
-    [items],
-  );
-
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     const matched = items.filter((i) => {
-      if (activeTag && !i.tags.includes(activeTag)) return false;
       if (!q) return true;
       return (
         i.name.toLowerCase().includes(q) || i.tags.some((t) => t.toLowerCase().includes(q))
@@ -89,7 +100,7 @@ export default function WorkspaceBrowser({
     });
     // Pinned first; the backend already returns the rest by last-opened.
     return [...matched].sort((a, b) => Number(b.pinned) - Number(a.pinned));
-  }, [items, query, activeTag]);
+  }, [items, query]);
 
   async function destroy(ws: WorkspaceMeta) {
     try {
@@ -155,19 +166,7 @@ export default function WorkspaceBrowser({
           margin: "0 auto",
         }}
       >
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: "var(--r-md)",
-            background: "var(--accent)",
-            display: "grid",
-            placeItems: "center",
-            fontSize: 19,
-          }}
-        >
-          <Icon name="logo" size={19} style={{ color: "var(--on-accent)" }} />
-        </div>
+        <BurrowMark size={36} style={{ borderRadius: "var(--r-md)", flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 18, fontWeight: 600 }}>Burrow</div>
           <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
@@ -212,9 +211,10 @@ export default function WorkspaceBrowser({
 
       <div style={{ maxWidth: 1000, margin: "0 auto", padding: "0 32px 40px" }}>
         <input
+          ref={searchRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search workspaces, tags, and everything inside them…"
+          placeholder="Type, or press / to search your workspaces…"
           style={{
             width: "100%",
             background: "var(--surface-2)",
@@ -225,27 +225,6 @@ export default function WorkspaceBrowser({
             marginBottom: 14,
           }}
         />
-
-        {allTags.length > 0 && (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 }}>
-            {allTags.map((t) => (
-              <button
-                key={t}
-                onClick={() => setActiveTag(activeTag === t ? null : t)}
-                style={{
-                  fontSize: 12,
-                  padding: "3px 9px",
-                  borderRadius: 99,
-                  border: `1px solid ${activeTag === t ? "var(--accent-line)" : "var(--border)"}`,
-                  background: activeTag === t ? "var(--accent-wash)" : "transparent",
-                  color: activeTag === t ? "var(--accent)" : "var(--text-muted)",
-                }}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        )}
 
         {creating && (
           <div
@@ -278,12 +257,8 @@ export default function WorkspaceBrowser({
                 padding: 20,
               }}
             >
-              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>
                 New workspace
-              </div>
-              <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 16 }}>
-                A folder on your disk holding this project's board, documents and
-                transcript.
               </div>
 
               <input
@@ -306,83 +281,75 @@ export default function WorkspaceBrowser({
                 }}
               />
 
-              <button
-                onClick={() => setNewPinned((v) => !v)}
-                aria-pressed={newPinned}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  width: "100%",
-                  padding: "9px 12px",
-                  marginBottom: 18,
-                  borderRadius: "var(--r-sm)",
-                  border: `1px solid ${newPinned ? "var(--accent-line)" : "var(--border)"}`,
-                  background: newPinned ? "var(--accent-wash)" : "transparent",
-                  textAlign: "left",
-                }}
-              >
-                <span
-                  // Track and knob, drawn from tokens so it follows the theme.
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <button
+                  onClick={() => setNewPinned((v) => !v)}
+                  aria-pressed={newPinned}
                   style={{
-                    flexShrink: 0,
-                    width: 32,
-                    height: 18,
-                    borderRadius: 99,
-                    background: newPinned ? "var(--accent)" : "var(--border-strong)",
-                    position: "relative",
-                    transition: "background 120ms ease",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 13,
+                    color: "var(--text-muted)",
                   }}
                 >
                   <span
+                    // Track and knob, drawn from tokens so it follows the theme.
                     style={{
-                      position: "absolute",
-                      top: 2,
-                      left: newPinned ? 16 : 2,
-                      width: 14,
-                      height: 14,
+                      flexShrink: 0,
+                      width: 28,
+                      height: 16,
                       borderRadius: 99,
-                      background: newPinned ? "var(--on-accent)" : "var(--surface)",
-                      transition: "left 120ms ease",
+                      background: newPinned ? "var(--accent)" : "var(--border-strong)",
+                      position: "relative",
+                      transition: "background 120ms ease",
                     }}
-                  />
-                </span>
-                <span style={{ flex: 1 }}>
-                  <span style={{ display: "block", fontSize: 14 }}>Pin this workspace</span>
-                  <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)" }}>
-                    Keeps it at the top of the list.
+                  >
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: 2,
+                        left: newPinned ? 14 : 2,
+                        width: 12,
+                        height: 12,
+                        borderRadius: 99,
+                        background: newPinned ? "var(--on-accent)" : "var(--surface)",
+                        transition: "left 120ms ease",
+                      }}
+                    />
                   </span>
-                </span>
-              </button>
+                  Pin
+                </button>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                <button
-                  onClick={() => setCreating(false)}
-                  style={{
-                    color: "var(--text-muted)",
-                    padding: "8px 14px",
-                    borderRadius: "var(--r-sm)",
-                    fontSize: 14,
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => void create()}
-                  disabled={!newName.trim()}
-                  style={{
-                    background: "var(--accent)",
-                    color: "var(--on-accent)",
-                    padding: "8px 18px",
-                    borderRadius: "var(--r-sm)",
-                    fontSize: 14,
-                    fontWeight: 500,
-                    opacity: newName.trim() ? 1 : 0.4,
-                    cursor: newName.trim() ? "pointer" : "not-allowed",
-                  }}
-                >
-                  Create
-                </button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => setCreating(false)}
+                    style={{
+                      color: "var(--text-muted)",
+                      padding: "8px 14px",
+                      borderRadius: "var(--r-sm)",
+                      fontSize: 14,
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => void create()}
+                    disabled={!newName.trim()}
+                    style={{
+                      background: "var(--accent)",
+                      color: "var(--on-accent)",
+                      padding: "8px 18px",
+                      borderRadius: "var(--r-sm)",
+                      fontSize: 14,
+                      fontWeight: 500,
+                      opacity: newName.trim() ? 1 : 0.4,
+                      cursor: newName.trim() ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    Create
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -563,51 +530,31 @@ export default function WorkspaceBrowser({
                     width: 26,
                     height: 26,
                     borderRadius: "var(--r-sm)",
-                    color: "var(--text-faint)",
+                    color: "#e5484d",
                   }}
                 >
                   <Icon name="trash" size={14} />
                 </button>
 
-                <div
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: "var(--r-sm)",
-                    background: "var(--accent-wash)",
-                    display: "grid",
-                    placeItems: "center",
-                  }}
-                >
-                  <span
+                {ws.name === GETTING_STARTED_NAME && (
+                  <div
                     style={{
-                      width: 7,
-                      height: 7,
-                      borderRadius: 99,
-                      background: "var(--accent)",
-                      display: "block",
+                      width: 28,
+                      height: 28,
+                      borderRadius: "var(--r-sm)",
+                      background: "var(--accent-wash)",
+                      display: "grid",
+                      placeItems: "center",
                     }}
-                  />
-                </div>
-                <div style={{ fontWeight: 600, marginTop: "auto" }}>{ws.name}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 12, color: "var(--text-faint)" }}>
-                    {ws.blockCount} {ws.blockCount === 1 ? "block" : "blocks"}
-                  </span>
-                  {ws.tags.map((t) => (
-                    <span
-                      key={t}
-                      style={{
-                        fontSize: 11,
-                        padding: "2px 7px",
-                        borderRadius: 4,
-                        background: "var(--surface-2)",
-                        color: "var(--text-muted)",
-                      }}
-                    >
-                      {t}
+                  >
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)" }}>
+                      #
                     </span>
-                  ))}
+                  </div>
+                )}
+                <div style={{ fontWeight: 600, marginTop: "auto" }}>{ws.name}</div>
+                <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
+                  {ws.blockCount} {ws.blockCount === 1 ? "block" : "blocks"}
                 </div>
               </div>
             ))}

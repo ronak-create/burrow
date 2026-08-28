@@ -29,10 +29,15 @@ import {
 /** Below this, in canvas units, the gesture was a click and not a drag. */
 const DRAG_THRESHOLD = 6;
 
-function newBlockData(kind: BlockKind, variant?: "rectangle" | "ellipse", color?: string) {
+function newBlockData(
+  kind: BlockKind,
+  variant?: "rectangle" | "ellipse",
+  color?: string,
+  strokeWidth?: number,
+) {
   switch (kind) {
     case "shape":
-      return { variant: variant ?? "rectangle", color: color ?? "slate" };
+      return { variant: variant ?? "rectangle", color: color ?? "slate", strokeWidth };
     case "text":
       return { text: "" };
     case "note":
@@ -59,6 +64,7 @@ export default function PlaceLayer() {
   // New shapes adopt the current ink colour, so pen and shapes feel like one set
   // of drawing tools rather than two.
   const inkStrokeColor = useCanvasMode((s) => s.color);
+  const shapeStrokeWidth = useCanvasMode((s) => s.shapeStrokeWidth);
 
   const [rect, setRect] = useState<Rect | null>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -158,7 +164,7 @@ export default function PlaceLayer() {
           // Frames are containers and must sit behind the blocks they enclose.
           zIndex: pending.kind === "frame" ? 0 : 1,
           data: {
-            ...newBlockData(pending.kind, pending.variant, inkStrokeColor),
+            ...newBlockData(pending.kind, pending.variant, inkStrokeColor, shapeStrokeWidth),
             ...(contains.length ? { contains } : {}),
           },
         } as Block,
