@@ -18,8 +18,9 @@ import {
  *
  * This is the default perception path (spec F): precise, cheap, and structured, so
  * the assistant reasons about what is actually there instead of guessing from a
- * picture. Vision is reserved as a fallback for hand-drawn ink, which has no
- * structured form to read.
+ * picture. Vision is the fallback for hand-drawn ink alone, which has no
+ * structured form to read — `read_sketch` renders it, and the count reported here
+ * is what tells the model there is anything to render.
  *
  * Two things matter here. Keep it compact — this goes into every turn's context.
  * And describe *relationships*, not just contents: which blocks sit inside which
@@ -159,7 +160,7 @@ export function boardView(board: Board): BoardView {
     connections,
     inkStrokes: board.ink.length,
     ...(board.ink.length
-      ? { note: "This board has hand-drawn strokes that are not readable as structured data. Ask the user, or request a rendered view, before reasoning about them." }
+      ? { note: "This board has hand-drawn strokes. They are not readable as structured data — call read_sketch to see them, or ask the user. Do not reason about them from this count alone." }
       : {}),
   };
 }

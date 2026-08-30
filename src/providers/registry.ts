@@ -69,6 +69,11 @@ export interface Settings {
   wakePhrase: string;
   /** Idle period before dropping back to wake-word-only. */
   idleSleepSeconds: number;
+  /**
+   * Microphone sensitivity, 1–10. Scales the speech-detection thresholds; 5 is
+   * the level measured against real speech. See `tuningFor` in `agent/vad.ts`.
+   */
+  micSensitivity: number;
 }
 
 const DEFAULTS: Settings = {
@@ -99,6 +104,7 @@ const DEFAULTS: Settings = {
   // Long enough to think mid-conversation without being dropped, short enough
   // that a room left alone stops treating everything said in it as a command.
   idleSleepSeconds: 45,
+  micSensitivity: 5,
 };
 
 const SETTINGS_KEY = "burrow.settings";

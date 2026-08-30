@@ -18,6 +18,7 @@ import { toastError, toastWarn } from "../ui/toast";
 import { listCustomModels } from "../providers/llm/custom";
 import { listCustomImageModels } from "../providers/image";
 import { listLocalWhisperModels } from "../providers/stt/local";
+import MicCheck from "./MicCheck";
 import { ACCENTS, useAccent, useTheme, type ThemePref } from "../ui/theme";
 
 const THEMES: Array<{ pref: ThemePref; label: string }> = [
@@ -764,6 +765,14 @@ export default function Settings({ onClose }: { onClose: () => void }) {
               </div>
             </>
           )}
+          {/*
+            Always shown, not only when always-on is enabled: the commonest reason
+            to want this is that the microphone appears not to work, and that is
+            exactly when someone has already switched the feature back off.
+          */}
+          <div style={{ paddingTop: 6 }}>
+            <MicCheck />
+          </div>
         </Section>
 
         <Section title="Research and images">

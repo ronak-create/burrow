@@ -227,7 +227,7 @@ interface LevelStore {
   set: (level: number) => void;
 }
 
-const useMicLevel = create<LevelStore>((set) => ({
+export const useMicLevel = create<LevelStore>((set) => ({
   level: 0,
   set: (level) => set({ level }),
 }));

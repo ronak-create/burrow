@@ -142,3 +142,24 @@ export function rms(frame: Float32Array): number {
 export function worthTranscribing(samples: number, sampleRate: number, t: VadTuning): boolean {
   return (samples / sampleRate) * 1000 >= t.minUtteranceMs;
 }
+
+/**
+ * Thresholds adjusted by a user-facing sensitivity, 1–10.
+ *
+ * The defaults above were measured against a speech synthesiser, which is clean,
+ * level, and has no room behind it. A real microphone in a real room is neither,
+ * and the gap between those two is not something this code can know — it depends
+ * on the microphone, the room, and how far away the person sits.
+ *
+ * So there is a knob. A level meter that shows a voice never crossing the line,
+ * with no way to move the line, is a diagnosis without a cure.
+ *
+ * 5 is the measured default. Each step is a third of an octave, which spans
+ * roughly 0.006–0.05 RMS end to end: quiet enough for a distant laptop
+ * microphone at 10, deaf enough to ignore a loud room at 1.
+ */
+export function tuningFor(sensitivity: number, base: VadTuning = VAD_DEFAULTS): VadTuning {
+  const clamped = Math.min(10, Math.max(1, sensitivity));
+  const scale = Math.pow(2, (5 - clamped) / 3);
+  return { ...base, openRms: base.openRms * scale, closeRms: base.closeRms * scale };
+}

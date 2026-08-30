@@ -573,7 +573,8 @@ survive.
 
 ### Still deliberately not done
 
-- **Vision fallback for ink.** Still reserved in `serialize.ts`.
+- **Vision fallback for ink.** Still reserved in `serialize.ts`. *(Built in
+  milestone 6.)*
 - **A bundled speech engine.** Unchanged, and less urgent still.
 
 ---
@@ -655,3 +656,120 @@ will be upward, to stop the detector waking on the room itself.
 - **Echo cancellation actually preventing self-trigger.** The session reducer
   discards everything captured while the assistant is speaking, which should make
   it moot — but that is reasoning, not a measurement.
+
+---
+
+## Build Log — Milestone 6 (Aug 2026)
+
+With `read_sketch`, **every branch of the DESIGN.md v1 tree is built.**
+
+### A meter, because the one thing that cannot be automated needed a hand
+
+Milestone 5 shipped with a gap no amount of further testing would close: the live
+audio path. `getUserMedia` and the `AudioWorklet` cannot be exercised without a
+microphone and a person talking, so the detector, the matcher and the session
+machine were all verified through files while the code that actually opens the
+microphone had never run.
+
+The response is `MicCheck`. One button in Settings runs the exact production
+path — same stream, same worklet, same detector, same transcription — so if the
+worklet fails to load in WebView2 it fails there, once, next to an explanation,
+rather than silently later as an assistant that never answers to its name.
+
+The meter beside it exists because the thresholds were measured against a speech
+synthesiser: clean, level, no room behind it. A real microphone is none of those,
+and the gap is not something this code can know. So the live level is drawn
+against the line that decides what counts as speech — and there is a sensitivity
+slider, because a meter showing a voice that never crosses the line, with no way
+to move the line, is a diagnosis without a cure.
+
+The scale is logarithmic. On a linear one the thresholds and a normal speaking
+voice all crowd into the leftmost tenth of the bar, which is precisely the part
+that has to be readable.
+
+### Ink: a picture, and only of the ink
+
+The structured board view carries everything except freehand strokes. A note has
+a title and a body, a diagram has nodes and edges — and a stroke has a list of
+coordinates, which tells a model nothing about whether they form an arrow, a ring
+around two cards, or a word. `boardView` had always reported ink as a bare count,
+so the assistant could tell that drawing existed and nothing whatever about it.
+
+Spec F scopes vision to exactly this and nothing else, and the scoping is doing
+real work: a picture of a table is strictly worse than the table and costs far
+more. So `read_sketch` renders the ink, plus enough of the structured board to
+locate it, and nothing else. It is withheld unless the board actually has ink,
+which on most boards it does not — the strongest capability filter available, and
+an honest one, since a tool that can only answer "there is no drawing" is a wasted
+step that the smallest local models get stuck on.
+
+### The picture has to contain the answer
+
+Including the surrounding blocks is easy to leave out and wrong to. An arrow from
+one card to another is *about* those two cards; rendered alone it is a diagonal
+line, and the model would confidently describe a diagonal line.
+
+That much was designed in. What was not, and had to be found by looking at the
+output, is that framing on the ink alone crops the blocks' captions off. An arrow
+between two cards has a bounding box that lies *between* them and touches
+neither, so both ids — the very things the model is asked to quote back — fell
+outside the viewBox. The first render of that case was a red arrow between two
+anonymous dashed edges, and the model duly reported seeing no blocks.
+
+The region now grows to include the blocks it draws, bounded to three times the
+ink so that one large frame nearby cannot shrink the drawing to a few pixels.
+
+### Vision as a side call, not a multimodal conversation
+
+The alternative was making the conversation itself multimodal: images in the
+history, every adapter taught to carry them, the loop taught to trim them. That
+is a large change to the one part of the system every feature depends on, to serve
+a fallback scoped to hand-drawn ink. It would also leave the picture in the
+history to be re-sent every subsequent turn — the same mistake the image tool
+avoided by writing files instead of inlining base64 into the board.
+
+So a sketch is described once and only the description enters the conversation.
+
+### A confident description of nothing
+
+Testing against the only local vision model available produced the result that
+shaped the rest of this work. Asked to describe the rendered sketch, it answered
+fluently and wrongly; asked to read text plainly visible in the picture, it said
+there was none; asked whether a red arrow filling a third of the frame existed,
+it said no; and asked about colour, it requested that an image be provided. Ollama
+reports that model as vision-capable.
+
+Two things follow. First, a "vision" flag from a local runtime cannot be trusted.
+Second, and worse, the failure has no error in it: the model responds as though
+asked a question with no picture attached, so the assistant would receive a
+confident account of a drawing nobody showed it — the failure this project spends
+the most effort avoiding. `looksLikeNoImage` turns that shape of reply into an
+explicit tool error naming the model. It is deliberately narrow: it matches a
+model *asking for* an image, not one describing a blank one, because converting a
+real description into an error is the worse mistake of the two.
+
+**A special case was written and then removed.** An early comparison suggested
+Ollama dropped images on its OpenAI-compatible route but carried them on its
+native one, and a native-API path was built on that basis. Re-running it, the
+native route failed identically — the one response that had looked like success
+was hallucination. The special case went, along with a comment claiming a
+measurement that did not replicate. The same standard the wake matcher was held
+to when it refused to ship an invented homophone table.
+
+### Verified
+
+The renderer is verified by looking at what it produces: sketches were rasterised
+through headless Chromium — the same engine family WebView2 runs — and inspected.
+The circle case put a violet ring cleanly around block `n1` with its caption
+legible; the arrow case is what exposed the cropping bug, and after the fix shows
+`n1 · Redis` and `n2 · Memcached` with the arrow running between them. Sixteen
+unit tests cover the geometry, the escaping of user text into SVG, and the
+context bounds. The no-image guard is tested against the verbatim replies that
+motivated it.
+
+**Not verified: the vision request shapes against a capable model.** Anthropic,
+OpenAI and Google were written from their documented formats and never sent. The
+only model on hand advertised vision and did not process images at all, which
+tests the guard thoroughly and the happy path not at all.
+
+206 frontend tests, 11 Rust tests, type-check and build clean.

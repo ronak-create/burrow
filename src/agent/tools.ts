@@ -3,18 +3,22 @@ import type { ToolCall, ToolResult, ToolSpec } from "../providers/types";
 import { runAsAgent as run, useBoard } from "../canvas/store";
 import { boardCentre, boundsOf, findFreeSpot } from "../canvas/placement";
 import { isSparse } from "../canvas/serialize";
+import { renderInk } from "../canvas/ink/render";
 import { DEFAULT_SIZE, type Block, type XY } from "../canvas/types";
 import { useCurrentWorkspace } from "../workspace/current";
 import { listDocuments, readDocumentText, writeImage } from "../workspace/api";
 import { SOURCES, formatPaper, searchPapers, type Source } from "./research";
 import {
   activeImage,
+  activeLLM,
   activeSearch,
+  canChat,
   canGenerateImages,
   canSearchWeb,
   keyFor,
   useProviders,
 } from "../providers/registry";
+import { describeImage, looksLikeNoImage, providerCanCarryImages } from "../providers/vision";
 import { formatResult } from "../providers/search";
 
 /**
@@ -199,6 +203,27 @@ export const TOOLS: ToolSpec[] = [
     },
   },
   {
+    name: "read_sketch",
+    description:
+      "Look at the freehand ink on the board and read back what it shows. The board view you " +
+      "are given lists every structured block precisely but reports drawing only as a count, " +
+      "because a list of stroke coordinates says nothing about whether they form an arrow, a " +
+      "circle around two cards, or a word. Call this when the user refers to something they " +
+      "drew, or when the board view reports ink and the strokes matter to the question. Do not " +
+      "call it to re-read notes, tables or diagrams — you already have those in full, and this " +
+      "is slower and less accurate for them.",
+    parameters: {
+      type: "object",
+      properties: {
+        question: str(
+          "Optional. What you want to know about the drawing, e.g. \"what do the arrows connect\". " +
+            "Omit for a general description.",
+        ),
+      },
+      required: [],
+    },
+  },
+  {
     name: "add_frame",
     description:
       "Draw a labelled frame to group related blocks. If the board already has the user's work on " +
@@ -291,6 +316,14 @@ export function availableTools(): ToolSpec[] {
   const gated: Record<string, () => boolean> = {
     search_web: canSearchWeb,
     generate_image: canGenerateImages,
+    // Withheld unless there is actually ink to look at, which on most boards
+    // there is not. This is the strongest filter available and it is honest: a
+    // tool that can only answer "there is no drawing" is one wasted step, and
+    // the smallest local models spend the whole turn stuck on it.
+    read_sketch: () =>
+      useBoard.getState().board.ink.length > 0 &&
+      canChat() &&
+      providerCanCarryImages(useProviders.getState().settings.llmProvider),
   };
   return TOOLS.filter((t) => gated[t.name]?.() ?? true);
 }
@@ -511,6 +544,74 @@ export async function runTool(call: ToolCall): Promise<ToolResult> {
           call.id,
           `${results.length} result(s) for "${query}" via ${provider.label}:\n\n` +
             results.map(formatResult).join("\n\n"),
+        );
+      }
+
+      case "read_sketch": {
+        const board = useBoard.getState().board;
+        if (board.ink.length === 0) {
+          return ok(call.id, "There is no freehand drawing on this board.");
+        }
+
+        const providerId = useProviders.getState().settings.llmProvider;
+        if (!providerCanCarryImages(providerId)) {
+          return fail(
+            call.id,
+            `The ${providerId} provider cannot be shown images, so the drawing cannot be read. ` +
+              "Tell the user, and answer from the structured board view instead.",
+          );
+        }
+
+        const rendered = await renderInk(board);
+        if (!rendered) return ok(call.id, "There is no freehand drawing on this board.");
+
+        const question = String(a.question ?? "").trim();
+        const provider = activeLLM();
+        const { llmModel } = useProviders.getState().settings;
+        const apiKey = await keyFor(provider.id, provider.keyOptional);
+
+        // The picture is described once and only the description enters the
+        // conversation, so the image is never re-sent on later turns.
+        const description = await describeImage(providerId, {
+          apiKey,
+          model: llmModel,
+          base64: rendered.base64,
+          prompt:
+            "This is a research board. The dashed rectangles are existing blocks, each labelled " +
+            "with its id; the coloured marks are the user's own freehand drawing over them. " +
+            "Describe only what the freehand drawing shows and what it points at or encircles, " +
+            "referring to blocks by the ids shown. Do not transcribe the block labels back to " +
+            "me — I already have them. Be brief and concrete, and say so plainly if the drawing " +
+            "is ambiguous rather than guessing." +
+            "\n\n" +
+            (question ? `The user wants to know: ${question}` : "Describe the drawing."),
+        });
+
+        if (!description) {
+          return fail(
+            call.id,
+            "The model returned no description of the drawing. It may not support images — " +
+              "tell the user which model is selected and answer from the board view instead.",
+          );
+        }
+
+        // A model that answers as though nothing was attached has not seen the
+        // drawing, and its reply is not a description of one. Passing it back as
+        // if it were would hand the assistant a confident account of a picture
+        // nobody showed it.
+        if (looksLikeNoImage(description)) {
+          return fail(
+            call.id,
+            `The selected model (${llmModel || "unnamed"}) did not receive the image — it replied ` +
+              "as though none was attached, so it almost certainly cannot accept them. Tell the " +
+              "user to switch to a vision-capable model, and answer from the board view instead.",
+          );
+        }
+
+        return ok(
+          call.id,
+          `The drawing (${board.ink.length} stroke(s), shown with ${rendered.blocksShown} nearby ` +
+            `block(s) for context):\n\n${description}`,
         );
       }
 

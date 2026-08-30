@@ -4,6 +4,7 @@ import { toastError, toastWarn } from "../ui/toast";
 import { Recorder, speak, stopSpeaking, transcribe } from "../agent/voice";
 import { ContinuousListener } from "../agent/listener";
 import { initialSession, sessionStep, type SessionEvent, type SessionState } from "../agent/session";
+import { tuningFor } from "../agent/vad";
 import { canChat, canSpeak, canTranscribe, canWake, useProviders } from "../providers/registry";
 import {
   LiveListeningIndicator,
@@ -65,6 +66,11 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
   }, []);
 
   const wakeReady = canWake(providers);
+  // Read through a ref rather than listed as a dependency: changing sensitivity
+  // must not tear down and restart a live microphone mid-sentence. It takes
+  // effect the next time listening starts, which is what the panel says it does.
+  const sensitivityRef = useRef(providers.settings.micSensitivity);
+  sensitivityRef.current = providers.settings.micSensitivity;
 
   useEffect(() => {
     if (!wakeReady) {
@@ -77,19 +83,24 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
     const engine = listener.current;
     dispatch({ type: "enable" });
     engine
-      .start({
-        onLevel: setMicLevel,
-        onUtterance: (text) => dispatch({ type: "heard", text }),
-        onError: toastError,
-        onStopped: (reason) => {
-          // The engine released the microphone on its own. Flip the setting too,
-          // so the toggle, the indicator and the hardware all agree — a switch
-          // left reading "on" over a released microphone is the exact ambiguity
-          // this feature is not allowed to have.
-          toastError(reason);
-          useProviders.getState().update({ wakeWord: false });
+      .start(
+        {
+          onLevel: setMicLevel,
+          onUtterance: (text) => dispatch({ type: "heard", text }),
+          onError: toastError,
+          onStopped: (reason) => {
+            // The engine released the microphone on its own. Flip the setting
+            // too, so the toggle, the indicator and the hardware all agree — a
+            // switch left reading "on" over a released microphone is the exact
+            // ambiguity this feature is not allowed to have.
+            toastError(reason);
+            useProviders.getState().update({ wakeWord: false });
+          },
         },
-      })
+        // The same tuning the meter in Settings draws its line from, or that
+        // meter would be calibrating something this never uses.
+        tuningFor(sensitivityRef.current),
+      )
       .catch((e) => {
         // The microphone was refused or is already held. Falling back to off is
         // the honest outcome: the indicator must not claim to be listening.

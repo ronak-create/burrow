@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   initialVadState,
   rms,
+  tuningFor,
   VAD_DEFAULTS,
   vadStep,
   worthTranscribing,
@@ -147,5 +148,46 @@ describe("worthTranscribing", () => {
 
   it("accepts a short word", () => {
     expect(worthTranscribing(0.5 * 16000, 16000, T)).toBe(true);
+  });
+});
+
+describe("tuningFor", () => {
+  it("leaves the measured defaults alone at the midpoint", () => {
+    expect(tuningFor(5)).toEqual(VAD_DEFAULTS);
+  });
+
+  it("raises the bar as sensitivity falls, and lowers it as it rises", () => {
+    expect(tuningFor(1).openRms).toBeGreaterThan(VAD_DEFAULTS.openRms);
+    expect(tuningFor(10).openRms).toBeLessThan(VAD_DEFAULTS.openRms);
+  });
+
+  it("keeps the two thresholds apart at every setting", () => {
+    // Collapsing them would remove the hysteresis, and a voice at the boundary
+    // would shred one sentence into a dozen transcription requests.
+    for (let s = 1; s <= 10; s++) {
+      expect(tuningFor(s).closeRms).toBeLessThan(tuningFor(s).openRms);
+    }
+  });
+
+  it("clamps a value from a hand-edited settings file", () => {
+    // settings.json is a plain file the user owns, so it can contain anything.
+    expect(tuningFor(-40)).toEqual(tuningFor(1));
+    expect(tuningFor(999)).toEqual(tuningFor(10));
+    expect(tuningFor(0).openRms).toBeGreaterThan(0);
+  });
+
+  it("spans a useful range end to end", () => {
+    // Quiet enough for a distant laptop mic, deaf enough for a loud room.
+    expect(tuningFor(10).openRms).toBeLessThan(0.008);
+    expect(tuningFor(1).openRms).toBeGreaterThan(0.045);
+  });
+
+  it("leaves the timings untouched", () => {
+    // Sensitivity is about level. Hangover and pre-roll are about speech rhythm,
+    // which does not change because a microphone is quieter.
+    const t = tuningFor(9);
+    expect(t.hangoverMs).toBe(VAD_DEFAULTS.hangoverMs);
+    expect(t.prerollMs).toBe(VAD_DEFAULTS.prerollMs);
+    expect(t.maxUtteranceMs).toBe(VAD_DEFAULTS.maxUtteranceMs);
   });
 });

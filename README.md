@@ -21,9 +21,9 @@ papers can be searched across four open indexes.
 - Canvas with note, text, shape, frame, table, diagram, doc and image blocks —
   drawn onto the canvas rather than dropped at the viewport centre
 - Freehand ink and eraser, and one undo stack shared by you and the assistant
-- Assistant with fourteen tools: write blocks, connect them, frame them, flag what
-  it is unsure about, read your documents, search the literature and the web, and
-  generate images
+- Assistant with fifteen tools: write blocks, connect them, frame them, flag what
+  it is unsure about, read your documents, read your handwriting, search the
+  literature and the web, and generate images
 - Documents: PDF, Word, Markdown and text imported into the workspace, read
   in-app, and excerpted onto the board
 - Web search and image generation, both BYOK and both provider-agnostic — including
@@ -43,8 +43,6 @@ papers can be searched across four open indexes.
 
 - A bundled speech engine. Local transcription talks to a Whisper server you run;
   no binary or model file ships in the installer.
-- Vision fallback for freehand ink. The assistant reads the board's structure,
-  but cannot yet interpret a hand-drawn sketch.
 
 ## Stack
 
@@ -106,6 +104,12 @@ what you actually get as a second phrase, separated by a comma.
 The indicator is always visible and shows exactly one of: off (still, struck
 through — the microphone is released, not muted), waiting for the wake word,
 listening, thinking, speaking. In the listening state it moves with your voice.
+
+**If the microphone seems not to work**, Settings → Voice has a *Test microphone*
+button. It runs the whole path — capture, speech detection, transcription — and
+shows your live level against the threshold that decides what counts as speech,
+with a slider to move that threshold. If your normal voice does not cross the
+line, nothing else will work, and this is where you find out.
 
 Rust-side checks:
 
