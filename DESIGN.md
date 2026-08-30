@@ -404,6 +404,11 @@ as PCM / 1 channel / 16000 Hz / 16-bit, the 404 fallback reached `/inference` wi
 the model field correctly absent, and no `Authorization` header was sent when no
 key was stored. 102 frontend tests, 11 Rust tests, type-check clean.
 
+**Since confirmed against the real binary** — see the verification section at the
+end of this document. whisper.cpp does 404 the OpenAI route and does serve
+`/inference`, so the fallback written from its documentation turned out to be
+load-bearing rather than defensive.
+
 ### Still deliberately not done
 
 - **Wake word.** Unchanged. Local STT existing does make continuous-Whisper a
@@ -558,13 +563,95 @@ the transition that triggers it — a loud utterance ending, followed by "thinki
 
 176 frontend tests, 11 Rust tests, type-check and build clean.
 
-**Not verified: any of it against a real microphone or a real voice.** No speech
-was spoken into this build. The audio path — `getUserMedia`, the worklet, and the
-thresholds in `VAD_DEFAULTS` — is reasoned and unit-tested, not observed. The
-threshold values in particular are guesses at what a room sounds like, and should
-be expected to need tuning against a real microphone.
+**Partly verified since** — see the verification section at the end of this
+document. The matcher and the thresholds have now met a real Whisper model and
+real speech, and the matcher's design was vindicated: the model produced four
+different spellings of the name across ten utterances. What remains unverified is
+the live audio path — `getUserMedia` and `AudioWorklet` inside WebView2 — and a
+human voice in a real room, which is what the thresholds ultimately have to
+survive.
 
 ### Still deliberately not done
 
 - **Vision fallback for ink.** Still reserved in `serialize.ts`.
 - **A bundled speech engine.** Unchanged, and less urgent still.
+
+---
+
+## Verified Against Real whisper.cpp (30 Aug 2026)
+
+Milestones 4 and 5 both shipped with the same caveat: the local speech path was
+reasoned and unit-tested but had never met a real Whisper model or real speech.
+This closes most of that. Run against `whisper.cpp` release `b4938` serving
+`ggml-base.en` on `127.0.0.1:8080`, with speech synthesized through both Windows
+SAPI voices — ten utterances covering the wake word alone, the wake word with a
+trailing command, the name without its carrier, the name buried mid-sentence, and
+plain speech containing no wake word at all.
+
+### whisper.cpp does not implement the OpenAI audio route
+
+The single most important result, because milestone 4's fallback was written from
+its documentation rather than from observation:
+
+| Request | Response |
+| --- | --- |
+| `POST /v1/audio/transcriptions` | **404** `File Not Found` |
+| `POST /inference` | **200** `{"text":" Hey, Burro.\n"}` |
+| `GET /v1/models` | **404** `File Not Found` |
+
+So the retry is not defensive over-engineering — it is the only reason the one
+genuinely keyless engine works at all. Without it every utterance would have
+failed with a 404 that named nothing useful. The decision that **Detect** must not
+warn on an empty model list is confirmed by the same table: whisper.cpp has no
+`/v1/models` route, and a blank model field is the correct configuration for it
+rather than an unfinished one.
+
+### Phonetic matching was necessary, not defensive
+
+The model produced **four different spellings of the name across ten utterances**,
+and got it exactly right twice:
+
+| Spoken | Transcribed | Woke |
+| --- | --- | --- |
+| "Hey Burrow" | `Hey, Baro.` | ✅ |
+| "Hey Burrow" | `Hey, Burro.` | ✅ |
+| "Hey Burrow, add a note about Redis persistence" | `Hey, Barrow, add a note about Reedy's persistence.` | ✅ |
+| "Hey Burrow, add a note about Redis persistence" | `Hey, Burrow. Add a note about Reedy's persistence.` | ✅ |
+| "Burrow, what is on the board" | `Burro, what is on the board?` | ✅ |
+| "Burrow, what is on the board" | `Burrow. What is on the board?` | ✅ |
+| "I was reading that the rabbit burrow collapsed last winter" | *(verbatim)* | ❌ correctly |
+| "Summarise the paper I just opened" | `Summarize the paper I just opened.` | ❌ correctly |
+| "Summarise the paper I just opened" | `Summer rise the paper I just opened.` | ❌ correctly |
+
+A literal string match would have fired on two of ten. Soundex caught `Baro`,
+`Barrow` and `Burro` — all `B600` — and the lead window correctly refused the
+sentence with the name in the middle of it. Trailing commands were recovered
+intact from the same breath in every case.
+
+These exact strings are now test cases in `wake.test.ts`, which replaces the
+invented homophone table the module deliberately never shipped with a measured
+one.
+
+### The VAD thresholds have headroom
+
+Across the same ten files, the 90th-percentile frame sat at **0.143–0.183** RMS
+against an `openRms` of **0.02**, with peaks of 0.197–0.273. Every file opened and
+closed exactly once — no chatter, no split utterances, no missed onsets.
+
+That rules out the threshold being too high, which was the failure mode that would
+have made the wake word simply never fire. It does **not** rule out the opposite:
+these came from a speech synthesiser — clean, level, with no room behind it. A
+real microphone in a real room is quieter and noisier, so if these need moving it
+will be upward, to stop the detector waking on the room itself.
+
+### Still not verified
+
+- **`getUserMedia` and `AudioWorklet` inside WebView2.** The milestone 1 spike
+  proved `MediaRecorder` works there; the worklet path is a different API and has
+  never been exercised in the real shell. Everything above went through files, not
+  a live microphone.
+- **A human voice, in a room.** Synthesized speech is not a substitute for it,
+  particularly for the thresholds above.
+- **Echo cancellation actually preventing self-trigger.** The session reducer
+  discards everything captured while the assistant is speaking, which should make
+  it moot — but that is reasoning, not a measurement.

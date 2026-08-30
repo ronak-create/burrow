@@ -46,6 +46,17 @@ export interface VadTuning {
  * at the boundary open and close many times a second, shredding one sentence into
  * a dozen transcription requests.
  */
+/**
+ * Measured, 30 Aug 2026: across ten synthesized utterances the 90th-percentile
+ * frame sat at 0.143–0.183 RMS and peaks reached 0.197–0.273, so `openRms` has
+ * roughly seven times' headroom under real speech and every file opened and
+ * closed exactly once. That rules out the threshold being too *high*.
+ *
+ * It does not rule out the opposite. Those samples came from a speech
+ * synthesiser: clean, level, and with no room behind them. A real microphone in
+ * a real room is quieter and noisier, so if these need moving it will be upward,
+ * to stop the detector waking on the room itself.
+ */
 export const VAD_DEFAULTS: VadTuning = {
   openRms: 0.02,
   closeRms: 0.012,

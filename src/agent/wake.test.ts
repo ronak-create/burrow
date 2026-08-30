@@ -86,6 +86,53 @@ describe("matchWake", () => {
   });
 });
 
+/**
+ * Transcripts observed, not imagined.
+ *
+ * These are the exact strings whisper.cpp (ggml-base.en) returned for speech
+ * synthesized through the two Windows SAPI voices, captured 30 Aug 2026. The
+ * module deliberately ships no invented table of mishearings; this is the
+ * measured version, and it is the evidence that phonetic matching was necessary
+ * rather than defensive — the model produced four different spellings of the
+ * name across ten utterances and got it exactly right twice.
+ */
+describe("real whisper.cpp output", () => {
+  const WOKE = [
+    "Hey, Baro.",
+    "Hey, Barrow, add a note about Reedy's persistence.",
+    "Burro, what is on the board?",
+    "Hey, Burro.",
+    "Hey, Burrow. Add a note about Reedy's persistence.",
+    "Burrow. What is on the board?",
+  ];
+
+  const DID_NOT = [
+    // The name said in the middle of an ordinary sentence.
+    "I was reading that the rabbit burrow collapsed last winter.",
+    "Summarize the paper I just opened.",
+    "Summer rise the paper I just opened.",
+  ];
+
+  it("wakes on every spelling the model actually produced", () => {
+    for (const heard of WOKE) {
+      expect(matchWake(heard, PHRASE).hit, heard).toBe(true);
+    }
+  });
+
+  it("stays asleep through the rest", () => {
+    for (const heard of DID_NOT) {
+      expect(matchWake(heard, PHRASE).hit, heard).toBe(false);
+    }
+  });
+
+  it("recovers the command from the same breath", () => {
+    expect(matchWake("Hey, Barrow, add a note about Reedy's persistence.", PHRASE).rest).toBe(
+      "add a note about reedy s persistence",
+    );
+    expect(matchWake("Burrow. What is on the board?", PHRASE).rest).toBe("what is on the board");
+  });
+});
+
 describe("matchAnyWake", () => {
   it("accepts any of the configured spellings", () => {
     const phrases = "hey burrow, computer";
