@@ -25,3 +25,8 @@ dist-ssr
 
 # Local scratch notes — personal working files, not project docs
 *.local.md
+
+# Local speech tooling — whisper.cpp binaries, a ~140MB model, and rendered test
+# fixtures. Downloaded on demand, never part of the repo: the whole point of the
+# local STT design is that no binary or model ships with the app.
+/tools/
