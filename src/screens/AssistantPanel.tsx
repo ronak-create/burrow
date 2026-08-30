@@ -174,7 +174,7 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
           onPointerDown={() => void beginListening()}
           onPointerUp={() => void endListening()}
           onPointerLeave={() => void endListening()}
-          title={micReady ? "Hold to speak" : "Add a speech-to-text key in Settings"}
+          title={micReady ? "Hold to speak" : "Set up speech-to-text in Settings"}
           style={{
             width: "100%",
             marginTop: 12,

@@ -88,7 +88,9 @@ export class Recorder {
 
 export async function transcribe(blob: Blob, mimeType: string): Promise<string> {
   const provider = activeSTT();
-  const apiKey = await keyFor(provider.id);
+  // A local Whisper server needs no key, but still gets one if the user stored
+  // it — a self-hosted endpoint can be put behind a token.
+  const apiKey = await keyFor(provider.id, provider.keyOptional);
   return provider.transcribe({ apiKey, audio: blob, mimeType });
 }
 

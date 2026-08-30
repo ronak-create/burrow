@@ -9,6 +9,7 @@ import { cerebras } from "./llm/cerebras";
 import { custom } from "./llm/custom";
 import { deepgram } from "./stt/deepgram";
 import { groqWhisper, openaiWhisper } from "./stt/whisper";
+import { localWhisper } from "./stt/local";
 import { IMAGE_PROVIDERS, type ImageProvider } from "./image";
 import { SEARCH_PROVIDERS, type SearchProvider } from "./search";
 import type { LLMProvider, STTProvider } from "./types";
@@ -23,7 +24,7 @@ import type { LLMProvider, STTProvider } from "./types";
  */
 
 export const LLM_PROVIDERS: LLMProvider[] = [anthropic, openai, google, groq, cerebras, custom];
-export const STT_PROVIDERS: STTProvider[] = [groqWhisper, openaiWhisper, deepgram];
+export const STT_PROVIDERS: STTProvider[] = [localWhisper, groqWhisper, openaiWhisper, deepgram];
 export { IMAGE_PROVIDERS, SEARCH_PROVIDERS };
 
 /** Every provider id we might hold a key for. The keychain cannot be enumerated. */
@@ -37,6 +38,10 @@ export interface Settings {
   llmProvider: string;
   llmModel: string;
   sttProvider: string;
+  /** Base URL for a local Whisper server, e.g. whisper.cpp or Speaches. */
+  sttBaseUrl: string;
+  /** Model id for a local Whisper server that serves more than one. */
+  sttModel: string;
   /** Base URL for the "Custom / Local" provider, e.g. an Ollama server. */
   customBaseUrl: string;
   imageProvider: string;
@@ -63,7 +68,12 @@ const DEFAULTS: Settings = {
   // it depends on what the machine has pulled; Settings offers a Detect button.
   llmProvider: "custom",
   llmModel: "",
-  sttProvider: "groq",
+  // Voice input defaults local for the same reason reasoning does. Left blank,
+  // the model field means "whatever the server was started with" — which is what
+  // whisper.cpp offers, and it has no model list to pick from.
+  sttProvider: "local-whisper",
+  sttBaseUrl: "http://127.0.0.1:8080/v1",
+  sttModel: "",
   customBaseUrl: "http://127.0.0.1:11434/v1",
   // Same posture as the reasoning layer: neither of these is on until the user
   // supplies a key or points the custom option at their own endpoint.
@@ -133,6 +143,12 @@ export function canChat(s: RegistryState = useProviders.getState()): boolean {
 }
 
 export function canTranscribe(s: RegistryState = useProviders.getState()): boolean {
+  const provider = STT_PROVIDERS.find((p) => p.id === s.settings.sttProvider);
+  // The gate for a keyless provider is the endpoint, not a model — unlike chat,
+  // where a local runtime serves many models and choosing one is unavoidable. A
+  // Whisper server serves the single model it was started with, so demanding one
+  // here would lock out whisper.cpp, the only engine that needs no account at all.
+  if (provider?.keyOptional) return Boolean(s.settings.sttBaseUrl.trim());
   return s.configured.includes(s.settings.sttProvider);
 }
 
@@ -159,7 +175,7 @@ export function activeLLM(): LLMProvider {
 
 export function activeSTT(): STTProvider {
   const { settings } = useProviders.getState();
-  return STT_PROVIDERS.find((p) => p.id === settings.sttProvider) ?? groqWhisper;
+  return STT_PROVIDERS.find((p) => p.id === settings.sttProvider) ?? localWhisper;
 }
 
 export function activeImage(): ImageProvider {

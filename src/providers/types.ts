@@ -71,6 +71,17 @@ export interface STTProvider {
   id: string;
   label: string;
   keyUrl: string;
+  /**
+   * True when the provider can run without a key — a Whisper server on loopback.
+   * The capability check must then look at the endpoint rather than the keychain,
+   * which would always report such a provider as unconfigured.
+   */
+  keyOptional?: boolean;
+  /**
+   * True when the endpoint and model are typed rather than fixed. A local server
+   * runs whatever the user has on disk, so there is no list to enumerate.
+   */
+  freeformModel?: boolean;
   /** Returns the transcript for a recorded audio blob. */
   transcribe(opts: { apiKey: string; audio: Blob; mimeType: string }): Promise<string>;
 }

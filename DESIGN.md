@@ -138,7 +138,7 @@ Run against Tauri v2 / WebView2 `Edg/151` on Windows 11. Every item below was te
 
 Despite the name, `--use-fake-ui-for-media-stream` fakes only the *permission prompt* (auto-granting it) — not the device. Confirmed by capturing 18–19 KB of real Opus audio from a real `Realtek(R) Audio` microphone array. The device-faking flag is the different `--use-fake-device-for-media-stream`. Note this auto-grants media permission app-wide, which is acceptable here because the app is the only thing loaded in the webview and it is the user's own machine — but it should not be carried into any build that loads third-party web content.
 
-**Correction to Section D:** the Web Speech API cannot serve as the zero-key STT under Tauri. `SpeechRecognition` is a Chromium feature backed by Google's cloud service and is absent from WebView2/WKWebView. Speech *synthesis* is a separate API and was tested independently — it is present but exposes no voices, so it is unusable too. The zero-key path is therefore local Whisper (STT, M2) plus the Rust `tts` crate (TTS, working now).
+**Correction to Section D:** the Web Speech API cannot serve as the zero-key STT under Tauri. `SpeechRecognition` is a Chromium feature backed by Google's cloud service and is absent from WebView2/WKWebView. Speech *synthesis* is a separate API and was tested independently — it is present but exposes no voices, so it is unusable too. The zero-key path is therefore local Whisper (STT — built in M4, as a client to a server the user runs) plus the Rust `tts` crate (TTS, working now).
 
 ---
 
@@ -326,3 +326,89 @@ clean.
   need a shipped binary and model file; neither is a code problem.
 - **Vision fallback for ink.** Still reserved in `serialize.ts`, still not worth
   building until someone hits the limits of the structured view.
+
+---
+
+## Build Log — Milestone 4 (Aug 2026)
+
+### The zero-key claim had a hole in it, and it was in the headline feature
+
+The README said the app runs with no keys at all. That was true of reasoning and
+of spoken replies, and false of voice input, which still required Groq, OpenAI or
+Deepgram. For a product whose differentiator is *voice*, the one capability that
+could not run keyless was the one that mattered.
+
+Two milestones deferred this for the same reason: the zero-key path is
+whisper.cpp, and whisper.cpp means shipping a binary and a model file. That is a
+packaging project — hundreds of megabytes in an installer, plus a decision about
+whether the model downloads on first use.
+
+It was the wrong framing. Local reasoning was never solved by bundling a model
+either; it was solved by pointing at a server the user already runs. The same
+answer works here, and it costs one adapter instead of an installer. `local.ts`
+is a client for a Whisper server on loopback, and it is now the default — the
+same posture as `custom.ts` pointing at Ollama out of the box.
+
+### Two dialects, and the user should not have to know which they have
+
+There is no single local Whisper server. Speaches, LocalAI and vLLM implement
+OpenAI's `/v1/audio/transcriptions`. whisper.cpp's own `server` predates that API
+and answers on `/inference` at the server root. Asking the user to identify their
+server's dialect in a settings field is asking them to debug a 404 they have no
+way to interpret — the request would simply fail, with voice appearing broken.
+
+So a 404 or 405 on the OpenAI route retries the native one. It is one extra round
+trip in the rare case, and it means the one engine that needs no account at all is
+the one that works without configuration.
+
+The model field follows the same rule and is blank by default. whisper.cpp serves
+the single model it was started with and ignores the field; Speaches uses it to
+select one and rejects an empty string. So blank means *omit the field*, not
+*send nothing in particular* — and **Detect** does not warn on an empty model
+list here the way it does for chat and images, because for whisper.cpp an empty
+list is the correct answer rather than a misconfiguration.
+
+### The recording had to be converted, not just forwarded
+
+Unless it is built against ffmpeg, whisper.cpp decodes nothing but WAV, and its
+reader requires 16 kHz mono specifically. `MediaRecorder` in WebView2 produces
+48 kHz Opus in a webm container. Forwarding that to the server the notes named as
+*the* zero-key path would have failed on every sentence.
+
+`wav.ts` decodes through an `OfflineAudioContext` created at 16 kHz, which makes
+the resample the browser's problem rather than ours, then writes 16-bit PCM. Only
+the local path uses it: WAV is uncompressed, and converting for a hosted endpoint
+would multiply the upload of every spoken sentence for no gain. A container this
+runtime cannot decode falls back to sending the original bytes rather than failing
+the turn — an ffmpeg-backed server would have accepted them anyway.
+
+### The capability gate is the endpoint, not the model
+
+`canChat` requires a model because a local runtime serves many and choosing one is
+unavoidable. `canTranscribe` deliberately does not: a Whisper server serves the
+one model it was started with, so requiring a model id would have locked out
+whisper.cpp — the only engine here that needs no account. The gate is the
+endpoint being set.
+
+That makes an unreachable server the common failure, so it is the one error
+written by hand. A bare transport error names neither the address tried nor what
+to start; this one names both, and says which hosted providers remain available.
+
+### Verified
+
+Checked against a real HTTP server rather than a mock of our own making, the
+standard the multipart builder was held to in milestone 2. A stub speaking each
+dialect parsed the request with Python's stdlib multipart parser and validated
+the WAV header it received: both routes accepted the body, the header read back
+as PCM / 1 channel / 16000 Hz / 16-bit, the 404 fallback reached `/inference` with
+the model field correctly absent, and no `Authorization` header was sent when no
+key was stored. 102 frontend tests, 11 Rust tests, type-check clean.
+
+### Still deliberately not done
+
+- **Wake word.** Unchanged. Local STT existing does make continuous-Whisper a
+  more plausible route than it was, but the position from milestone 2 holds: a
+  half-built always-listening feature is worse than none.
+- **A bundled engine.** Still a packaging decision, and now a much less urgent
+  one — the capability works today for anyone willing to run a server.
+- **Vision fallback for ink.** Still reserved in `serialize.ts`.

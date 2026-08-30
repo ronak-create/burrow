@@ -29,6 +29,9 @@ papers can be searched across four open indexes.
 - Web search and image generation, both BYOK and both provider-agnostic — including
   a custom OpenAI-compatible endpoint, so a local image server works the same way a
   local model does
+- Voice input against a Whisper server on your own machine — whisper.cpp,
+  Speaches, LocalAI or vLLM — with a hosted provider as the alternative, not the
+  requirement
 - BYOK keys in the OS keychain, or **no keys at all** — point it at Ollama or any
   OpenAI-compatible endpoint and the whole thing runs locally
 - Light/dark, monochrome by default, with an optional accent
@@ -37,8 +40,8 @@ papers can be searched across four open indexes.
 
 - Wake word and always-on listening. Voice input works today as hold-to-talk;
   true background listening needs a dedicated wake-word engine.
-- Local speech-to-text. Transcription still needs a key (Groq, OpenAI or
-  Deepgram); the zero-key path is local Whisper and is not bundled.
+- A bundled speech engine. Local transcription talks to a Whisper server you run;
+  no binary or model file ships in the installer.
 
 ## Stack
 
@@ -68,6 +71,23 @@ the first call fails with `Cannot read properties of undefined (reading 'invoke'
 that supports tool calling, and Burrow will find it — Settings defaults to
 `http://127.0.0.1:11434/v1`, and **Detect** lists what you have. A model without
 tool-calling support can hold a conversation but cannot touch the board.
+
+Voice works the same way. Spoken replies use your OS voices and never needed a
+key; voice *input* now defaults to a local Whisper server at
+`http://127.0.0.1:8080/v1`. Anything that speaks the OpenAI audio API will do —
+[Speaches](https://github.com/speaches-ai/speaches),
+[LocalAI](https://github.com/mudler/LocalAI), or vLLM — and so will
+[whisper.cpp](https://github.com/ggml-org/whisper.cpp)'s bundled `server`, which
+predates that API and answers on `/inference` instead:
+
+```bash
+./build/bin/whisper-server -m models/ggml-base.en.bin --port 8080
+```
+
+Leave the model field blank for whisper.cpp, which serves the one model it was
+started with. Recordings are converted to the 16 kHz mono WAV it requires before
+they are sent. Groq, OpenAI and Deepgram remain in the picker for anyone who
+would rather not run a server.
 
 Rust-side checks:
 

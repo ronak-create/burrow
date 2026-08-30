@@ -16,6 +16,7 @@ import { Icon } from "../ui/icons";
 import { toastError, toastWarn } from "../ui/toast";
 import { listCustomModels } from "../providers/llm/custom";
 import { listCustomImageModels } from "../providers/image";
+import { listLocalWhisperModels } from "../providers/stt/local";
 import { ACCENTS, useAccent, useTheme, type ThemePref } from "../ui/theme";
 
 const THEMES: Array<{ pref: ThemePref; label: string }> = [
@@ -48,6 +49,8 @@ export default function Settings({ onClose }: { onClose: () => void }) {
   const [detecting, setDetecting] = useState(false);
   const [imageFound, setImageFound] = useState<string[]>([]);
   const [detectingImage, setDetectingImage] = useState(false);
+  const [sttFound, setSttFound] = useState<string[]>([]);
+  const [detectingStt, setDetectingStt] = useState(false);
   const [tab, setTab] = useState<SettingsTab>("appearance");
 
   async function detect() {
@@ -82,6 +85,24 @@ export default function Settings({ onClose }: { onClose: () => void }) {
       toastError(e);
     } finally {
       setDetectingImage(false);
+    }
+  }
+
+  async function detectStt() {
+    setDetectingStt(true);
+    try {
+      const ids = await listLocalWhisperModels();
+      setSttFound(ids);
+      // Unlike the other two, an empty list is not a problem to warn about:
+      // whisper.cpp has no /models route and serves one model, which is exactly
+      // the case a blank field is meant to express.
+      if (ids.length > 0 && !providers.settings.sttModel.trim()) {
+        providers.update({ sttModel: ids[0] });
+      }
+    } catch (e) {
+      toastError(e);
+    } finally {
+      setDetectingStt(false);
     }
   }
 
@@ -134,7 +155,9 @@ export default function Settings({ onClose }: { onClose: () => void }) {
     ...(llm && !llm.keyOptional
       ? [{ id: llm.id, label: llm.label, use: "Reasoning", keyUrl: llm.keyUrl }]
       : []),
-    ...(stt ? [{ id: stt.id, label: stt.label, use: "Speech-to-text", keyUrl: stt.keyUrl }] : []),
+    ...(stt && !stt.keyOptional
+      ? [{ id: stt.id, label: stt.label, use: "Speech-to-text", keyUrl: stt.keyUrl }]
+      : []),
     ...(img && !img.keyOptional
       ? [{ id: img.id, label: img.label, use: "Image generation", keyUrl: img.keyUrl }]
       : []),
@@ -144,7 +167,13 @@ export default function Settings({ onClose }: { onClose: () => void }) {
   const capabilities = [
     { label: "Canvas, notes, frames, undo", on: true, note: "Always available, no key needed" },
     { label: "Assistant", on: canChat(providers), note: "Needs a reasoning provider key" },
-    { label: "Voice input", on: canTranscribe(providers), note: "Needs a speech-to-text key" },
+    {
+      label: "Voice input",
+      on: canTranscribe(providers),
+      note: stt?.keyOptional
+        ? "Uses a local Whisper server, no key needed"
+        : "Needs a speech-to-text key",
+    },
     {
       label: "Spoken replies",
       on: canSpeak(providers),
@@ -627,6 +656,55 @@ export default function Settings({ onClose }: { onClose: () => void }) {
               ))}
             </select>
           </Row>
+          {stt?.freeformModel && (
+            <>
+              <Row label="Endpoint">
+                <input
+                  value={providers.settings.sttBaseUrl}
+                  onChange={(e) => providers.update({ sttBaseUrl: e.target.value })}
+                  placeholder="http://127.0.0.1:8080/v1"
+                  style={{ ...selectStyle, fontFamily: "var(--font-mono)", fontSize: 13 }}
+                />
+              </Row>
+              <Row label="Model">
+                <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input
+                    list="burrow-local-stt-models"
+                    value={providers.settings.sttModel}
+                    onChange={(e) => providers.update({ sttModel: e.target.value })}
+                    placeholder="leave blank for whisper.cpp"
+                    style={{ ...selectStyle, fontFamily: "var(--font-mono)", fontSize: 13 }}
+                  />
+                  <datalist id="burrow-local-stt-models">
+                    {sttFound.map((m) => (
+                      <option key={m} value={m} />
+                    ))}
+                  </datalist>
+                  <button
+                    onClick={() => void detectStt()}
+                    disabled={detectingStt}
+                    title="Ask the endpoint which models it serves"
+                    style={{
+                      whiteSpace: "nowrap",
+                      padding: "6px 11px",
+                      borderRadius: "var(--r-sm)",
+                      fontSize: 13,
+                      border: "1px solid var(--border)",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {detectingStt ? "…" : "Detect"}
+                  </button>
+                </span>
+              </Row>
+              <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
+                A Whisper server on your own machine — whisper.cpp's bundled{" "}
+                <code style={{ fontFamily: "var(--font-mono)" }}>server</code>, Speaches,
+                LocalAI or vLLM. No key and no account. Leave the model blank for
+                whisper.cpp, which serves the one it was started with.
+              </div>
+            </>
+          )}
         </Section>
 
         <Section title="Research and images">
