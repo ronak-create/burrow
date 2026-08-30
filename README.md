@@ -29,6 +29,9 @@ papers can be searched across four open indexes.
 - Web search and image generation, both BYOK and both provider-agnostic — including
   a custom OpenAI-compatible endpoint, so a local image server works the same way a
   local model does
+- Always-on listening with a wake word, an idle sleep back to wake-word-only,
+  and a persistent indicator that moves with your voice so it is never a guess
+  whether the microphone is live
 - Voice input against a Whisper server on your own machine — whisper.cpp,
   Speaches, LocalAI or vLLM — with a hosted provider as the alternative, not the
   requirement
@@ -38,10 +41,10 @@ papers can be searched across four open indexes.
 
 **Not built yet**
 
-- Wake word and always-on listening. Voice input works today as hold-to-talk;
-  true background listening needs a dedicated wake-word engine.
 - A bundled speech engine. Local transcription talks to a Whisper server you run;
   no binary or model file ships in the installer.
+- Vision fallback for freehand ink. The assistant reads the board's structure,
+  but cannot yet interpret a hand-drawn sketch.
 
 ## Stack
 
@@ -89,6 +92,21 @@ started with. Recordings are converted to the 16 kHz mono WAV it requires before
 they are sent. Groq, OpenAI and Deepgram remain in the picker for anyone who
 would rather not run a server.
 
+**Always-on listening.** Off by default — the microphone opens because you asked
+it to, not because you installed something. Turn it on in Settings → Voice, or
+by clicking the indicator in the assistant panel, and say *"Hey Burrow"*.
+
+The microphone then stays open, but nothing is streamed anywhere: an energy
+detector runs locally over the audio and only wakes transcription when someone
+actually speaks. After the wake word it listens normally, and drops back to
+wake-word-only after an idle period you set. Matching is phonetic, so ordinary
+mishearings of the phrase still wake it; if yours is consistently missed, add
+what you actually get as a second phrase, separated by a comma.
+
+The indicator is always visible and shows exactly one of: off (still, struck
+through — the microphone is released, not muted), waiting for the wake word,
+listening, thinking, speaking. In the listening state it moves with your voice.
+
 Rust-side checks:
 
 ```bash
@@ -131,5 +149,5 @@ A workspace is a self-contained folder you own:
 
 ## License
 
-MIT (intended). Every dependency in the canvas stack is permissively licensed so that anyone can clone, run, and self-host this without needing a license of their own.
+MIT — see [LICENSE](LICENSE). Every dependency in the canvas stack is permissively licensed too, so anyone can clone, run and self-host this without needing a license of their own.
  

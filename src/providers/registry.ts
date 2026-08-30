@@ -59,6 +59,16 @@ export interface Settings {
   canvasShade: number;
   /** Speak assistant replies aloud. */
   voiceReplies: boolean;
+  /**
+   * Always-on listening (spec D). Off by default: an app that opens the
+   * microphone because it was installed, rather than because it was asked to,
+   * has decided something that is not its to decide.
+   */
+  wakeWord: boolean;
+  /** Comma-separated; any one of them wakes it. */
+  wakePhrase: string;
+  /** Idle period before dropping back to wake-word-only. */
+  idleSleepSeconds: number;
 }
 
 const DEFAULTS: Settings = {
@@ -84,6 +94,11 @@ const DEFAULTS: Settings = {
   canvasPattern: "dots",
   canvasShade: 0,
   voiceReplies: true,
+  wakeWord: false,
+  wakePhrase: "hey burrow",
+  // Long enough to think mid-conversation without being dropped, short enough
+  // that a room left alone stops treating everything said in it as a command.
+  idleSleepSeconds: 45,
 };
 
 const SETTINGS_KEY = "burrow.settings";
@@ -154,6 +169,15 @@ export function canTranscribe(s: RegistryState = useProviders.getState()): boole
 
 export function canSpeak(s: RegistryState = useProviders.getState()): boolean {
   return s.speechAvailable && s.settings.voiceReplies;
+}
+
+/**
+ * Always-on listening needs somewhere to send the audio. Without transcription
+ * the microphone would be held open permanently and hear nothing — the worst of
+ * both halves.
+ */
+export function canWake(s: RegistryState = useProviders.getState()): boolean {
+  return s.settings.wakeWord && canTranscribe(s) && Boolean(s.settings.wakePhrase.trim());
 }
 
 export function canGenerateImages(s: RegistryState = useProviders.getState()): boolean {

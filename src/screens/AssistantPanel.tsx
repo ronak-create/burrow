@@ -1,8 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { runTurn, trimHistory } from "../agent/loop";
 import { toastError, toastWarn } from "../ui/toast";
 import { Recorder, speak, stopSpeaking, transcribe } from "../agent/voice";
-import { canChat, canSpeak, canTranscribe, useProviders } from "../providers/registry";
+import { ContinuousListener } from "../agent/listener";
+import { initialSession, sessionStep, type SessionEvent, type SessionState } from "../agent/session";
+import { canChat, canSpeak, canTranscribe, canWake, useProviders } from "../providers/registry";
+import {
+  LiveListeningIndicator,
+  setMicLevel,
+  type IndicatorState,
+} from "../ui/ListeningIndicator";
 import type { Turn } from "../providers/types";
 import { appendTranscript, readTranscript, type TranscriptEntry } from "../workspace/api";
 import { Icon } from "../ui/icons";
@@ -32,6 +39,83 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
   const chatReady = canChat(providers);
   const micReady = canTranscribe(providers);
   const busy = status !== "idle" && status !== "listening";
+
+  /* ---------- always-on listening (spec D) ---------- */
+
+  const [session, setSession] = useState<SessionState>(initialSession);
+  const listener = useRef(new ContinuousListener());
+  // Mirrored in a ref because the microphone's callbacks outlive the render they
+  // were created in, and a stale session would answer with a stale mode.
+  const sessionRef = useRef(session);
+  const cfgRef = useRef({ wakePhrases: "", idleSleepMs: 0 });
+  cfgRef.current = {
+    wakePhrases: providers.settings.wakePhrase,
+    idleSleepMs: providers.settings.idleSleepSeconds * 1000,
+  };
+
+  // Likewise: the listener is started once, and would otherwise keep calling the
+  // first render's send.
+  const sendRef = useRef<(text: string) => void>(() => {});
+
+  const dispatch = useCallback((event: SessionEvent) => {
+    const result = sessionStep(sessionRef.current, event, cfgRef.current);
+    sessionRef.current = result.state;
+    setSession(result.state);
+    if (result.command) sendRef.current(result.command);
+  }, []);
+
+  const wakeReady = canWake(providers);
+
+  useEffect(() => {
+    if (!wakeReady) {
+      listener.current.stop();
+      dispatch({ type: "disable" });
+      setMicLevel(0);
+      return;
+    }
+
+    const engine = listener.current;
+    dispatch({ type: "enable" });
+    engine
+      .start({
+        onLevel: setMicLevel,
+        onUtterance: (text) => dispatch({ type: "heard", text }),
+        onError: toastError,
+        onStopped: (reason) => {
+          // The engine released the microphone on its own. Flip the setting too,
+          // so the toggle, the indicator and the hardware all agree — a switch
+          // left reading "on" over a released microphone is the exact ambiguity
+          // this feature is not allowed to have.
+          toastError(reason);
+          useProviders.getState().update({ wakeWord: false });
+        },
+      })
+      .catch((e) => {
+        // The microphone was refused or is already held. Falling back to off is
+        // the honest outcome: the indicator must not claim to be listening.
+        toastError(e);
+        dispatch({ type: "disable" });
+      });
+
+    return () => {
+      engine.stop();
+      dispatch({ type: "disable" });
+      setMicLevel(0);
+    };
+  }, [wakeReady, dispatch]);
+
+  // Anything that is not idle suspends the session: the assistant's own spoken
+  // reply must not be transcribed back into a command, and audio captured while
+  // the push-to-talk button is held is already being handled by that path.
+  useEffect(() => {
+    dispatch({ type: "busy", value: status !== "idle" });
+  }, [status, dispatch]);
+
+  useEffect(() => {
+    if (session.mode !== "active") return;
+    const id = setInterval(() => dispatch({ type: "tick", dtMs: 1000 }), 1000);
+    return () => clearInterval(id);
+  }, [session.mode, dispatch]);
 
   useEffect(() => {
     void providers.refresh();
@@ -126,8 +210,46 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
     }
   }
 
+  // `send` is a hoisted declaration, so this is safe here and keeps the wiring
+  // next to the state it belongs to.
+  sendRef.current = (text: string) => void send(text);
+
+  /**
+   * What the indicator claims. Whatever the assistant is doing outranks the
+   * session mode, because "thinking" and "listening" are the two states a user
+   * most needs told apart, and the session is still nominally active throughout.
+   */
+  const indicatorState: IndicatorState =
+    status === "thinking" || status === "transcribing"
+      ? "thinking"
+      : status === "speaking"
+        ? "speaking"
+        : status === "listening" || session.mode === "active"
+          ? "active"
+          : session.mode === "wake"
+            ? "wake"
+            : "off";
+
+  function toggleWake() {
+    if (!providers.settings.wakeWord && !micReady) {
+      toastWarn("Set up speech-to-text in Settings before turning on always-on listening.");
+      return;
+    }
+    providers.update({ wakeWord: !providers.settings.wakeWord });
+  }
+
+  const idle = providers.settings.wakeWord
+    ? session.mode === "active"
+      ? "Listening — just talk"
+      : session.mode === "wake"
+        ? `Say "${providers.settings.wakePhrase.split(",")[0].trim()}"`
+        : "Microphone off"
+    : chatReady
+      ? "Hold to speak, or type"
+      : "Add an API key in Settings";
+
   const statusLabel: Record<Status, string> = {
-    idle: chatReady ? "Hold to speak, or type" : "Add an API key in Settings",
+    idle,
     listening: "Listening…",
     transcribing: "Transcribing…",
     thinking: "Thinking…",
@@ -148,6 +270,21 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
     >
       <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/*
+            Spec D: persistent and always visible, so whether the microphone is
+            live is never a question the user has to answer by guessing. It is
+            also the on/off switch, because the control that makes the claim
+            should be the control that changes it.
+          */}
+          <LiveListeningIndicator
+            state={indicatorState}
+            onClick={toggleWake}
+            title={
+              providers.settings.wakeWord
+                ? "Always-on listening is on — click to turn the microphone off"
+                : "Turn on always-on listening"
+            }
+          />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 600 }}>Research Assistant</div>
             <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{statusLabel[status]}</div>

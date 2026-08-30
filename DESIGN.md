@@ -412,3 +412,159 @@ key was stored. 102 frontend tests, 11 Rust tests, type-check clean.
 - **A bundled engine.** Still a packaging decision, and now a much less urgent
   one — the capability works today for anyone willing to run a server.
 - **Vision fallback for ink.** Still reserved in `serialize.ts`.
+
+---
+
+## Build Log — Milestone 5 (Aug 2026)
+
+### The wake word was blocked on a decision, not on difficulty
+
+Three milestones deferred it. The reasoning each time was that it needs a
+dedicated engine, and that both candidates carried a cost: Porcupine wants a
+per-user access key, which cuts directly against §A's no-account posture, and
+continuous local Whisper depended on local STT existing.
+
+Local STT landed in milestone 4, so the second route stopped being hypothetical.
+The engine is the Whisper server the user is already running for hold-to-talk.
+No new dependency, no access key, nothing added to the installer.
+
+### Why continuous Whisper was ever a bad idea, and what changes it
+
+Transcribing continuously would keep a model resident and busy for every second
+the app is open. On a laptop that is a battery decision the product is not
+entitled to make on the user's behalf, and it is the real objection — not
+accuracy.
+
+`vad.ts` removes it. The microphone stays open and an energy detector runs over
+it for approximately nothing; Whisper is woken only for audio that contains
+speech. In a quiet room the marginal cost of the feature is one RMS over 128
+samples per audio quantum, and nothing else.
+
+Energy-based rather than neural, deliberately. A neural VAD is more accurate in
+noise but is a second model to ship and load, which is precisely the cost being
+avoided. The failure modes are mild in both directions: a false positive costs
+one short transcription that matches no wake phrase, and a false negative costs
+the user saying the wake word twice.
+
+Two thresholds rather than one, because a voice hovering at a single boundary
+opens and closes many times a second and shreds one sentence into a dozen
+requests. A hangover long enough to survive the pause between clauses, or
+"Hey Burrow — add a note about Redis" arrives as two utterances with the command
+half stripped of the wake word that authorised it. And a hard cap, because a room
+with a fan in it can sit above the close threshold indefinitely: an utterance
+that never ends is one that never gets transcribed, and the feature would simply
+stop responding with nothing logged anywhere.
+
+Pre-roll matters more than it looks. A detector can only fire once enough signal
+has arrived to cross the threshold, which is always after the word has started.
+Without keeping the audio from before the trigger, every recording begins
+mid-wake-word and the match fails on the one word it was listening for.
+
+### One implementation of the detector, not two
+
+The VAD has to run on the audio thread, which means it has to be inside an
+`AudioWorklet`, which means its source has to be a string. The obvious approach —
+writing the processor inline in a template literal — produces two copies of the
+detector, and the one with tests against it is not the one that runs.
+
+So `listener.ts` builds the worklet by stringifying the functions from `vad.ts`.
+That imposes a real constraint, recorded at the top of that file: those two
+functions may not reference any module-level binding, including each other,
+because `String(fn)` returns the function *after bundling*, where an outside
+reference has been renamed to something that does not exist inside the worklet.
+`vadStep` originally called `initialVadState()` and now writes the literal out
+for exactly this reason.
+
+It is the kind of constraint that stays invisible until it ships, since
+minification only happens in a production build. So it is covered twice: the test
+executes the generated source with nothing in scope but two stubs, making any
+free identifier a `ReferenceError`; and the property was checked directly against
+the built bundle by extracting the minified `vadStep` and `rms` and running them
+in an isolated scope.
+
+### Matching phonetically, and refusing to invent a table
+
+Whisper renders a name it has never been told about however it likes. Matching
+the literal string would mean the feature works for people whose accent the model
+happens to spell the expected way, and silently never fires for everyone else —
+with nothing on screen to explain it.
+
+So matching is Soundex plus a bounded edit distance, and leading carrier words are
+optional: "hey" is the most-dropped word in any transcript, and "Hey Burrow"
+arriving as "A burrow" is routine. There is deliberately **no** built-in table of
+"words Whisper produces instead of Burrow". Such a table is only worth having if
+it was built from observation, and inventing plausible-looking entries would be
+guessing dressed up as measurement. The setting takes a comma-separated list
+instead, so a user who hits a consistent mishearing adds it themselves.
+
+The lead window is the other half. The wake word starts an utterance; it is not a
+word that may appear anywhere in one. Without that restriction, saying "the rabbit
+burrow collapsed" in ordinary conversation would activate the assistant — which
+is the behaviour that makes always-listening features unbearable.
+
+### Off means the microphone is released
+
+§D asks for a manual toggle that is a *hard* off. A toggle that stopped acting on
+audio while still holding the stream open would be a lie told by the interface
+about the microphone, which is the one lie an always-listening product cannot
+afford. `stop()` ends the tracks, because ending them is what turns the operating
+system's own microphone indicator off — and that indicator is the only claim about
+the microphone the user can independently check.
+
+The in-app indicator follows the same rule. `off` does not animate at all: not a
+slower pulse, not a dimmer one. A resting animation is what a live-but-quiet
+microphone looks like, so sharing that vocabulary would make the two confusable in
+the one case where confusion matters. Every other state moves, and `active` moves
+with the user's own voice — a pulse on a timer says "something is running", while
+a shape that answers when you speak says "this microphone can hear you", which is
+the actual claim.
+
+Enabling never jumps straight to active either. Turning the microphone on is not
+the same as addressing the assistant, and starting active would treat the first
+thing said after flipping the switch as a command.
+
+### Failures that would otherwise be permanent
+
+Anything captured while the assistant is thinking or speaking is discarded. Echo
+cancellation is not perfect, and a spoken reply containing the app's own name
+would otherwise wake it and be handed straight back to it as a command.
+
+Utterances are transcribed one at a time and in order. They can close faster than
+a small local model answers, and letting them race would deliver commands out of
+the order they were spoken — which, for an assistant that edits a board, is not a
+cosmetic problem.
+
+And the listener gives up. Switching always-on listening on while the Whisper
+server is not running is undetectable up front: the endpoint is configured, it
+simply does not answer. Without a limit the microphone would stay open
+indefinitely achieving nothing, stacking a fresh error for every sentence spoken
+near it. After three consecutive failures it stops, releases the microphone and
+turns the setting off, so the toggle, the indicator and the hardware agree.
+
+### Verified
+
+The pure layers are covered directly: the detector driven frame by frame through
+open, close, chatter, cap and frame-size independence; the matcher against
+homophones, dropped carriers, mid-sentence false positives and multi-word
+phrases; the session machine over every transition including barge-in and idle
+sleep. The generated worklet is executed rather than merely generated, driven with
+synthetic frames to confirm pre-roll is present, that a pause between clauses does
+not split an utterance, and that the pre-roll buffer does not grow without bound.
+
+The indicator's geometry is checked against its own configuration, which caught a
+real bug: at full voice the blob overflowed its box and was silently clipped, and
+the transition that triggers it — a loud utterance ending, followed by "thinking"
+— is the most common one in the whole feature.
+
+176 frontend tests, 11 Rust tests, type-check and build clean.
+
+**Not verified: any of it against a real microphone or a real voice.** No speech
+was spoken into this build. The audio path — `getUserMedia`, the worklet, and the
+thresholds in `VAD_DEFAULTS` — is reasoned and unit-tested, not observed. The
+threshold values in particular are guesses at what a room sounds like, and should
+be expected to need tuning against a real microphone.
+
+### Still deliberately not done
+
+- **Vision fallback for ink.** Still reserved in `serialize.ts`.
+- **A bundled speech engine.** Unchanged, and less urgent still.

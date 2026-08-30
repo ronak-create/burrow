@@ -9,6 +9,7 @@ import {
   canSearchWeb,
   canSpeak,
   canTranscribe,
+  canWake,
   useProviders,
 } from "../providers/registry";
 import { deleteApiKey, setApiKey } from "../workspace/api";
@@ -178,6 +179,13 @@ export default function Settings({ onClose }: { onClose: () => void }) {
       label: "Spoken replies",
       on: canSpeak(providers),
       note: providers.speechAvailable ? "Uses your OS voices, no key needed" : "OS speech engine unavailable",
+    },
+    {
+      label: "Always-on listening",
+      on: canWake(providers),
+      note: providers.settings.wakeWord
+        ? "Wake word, then talk"
+        : "Off — voice is hold-to-talk",
     },
     { label: "Paper search", on: true, note: "Four open indexes, no key needed" },
     { label: "Web search", on: canSearchWeb(providers), note: "Needs a web search key" },
@@ -702,6 +710,57 @@ export default function Settings({ onClose }: { onClose: () => void }) {
                 <code style={{ fontFamily: "var(--font-mono)" }}>server</code>, Speaches,
                 LocalAI or vLLM. No key and no account. Leave the model blank for
                 whisper.cpp, which serves the one it was started with.
+              </div>
+            </>
+          )}
+        </Section>
+
+        <Section title="Voice">
+          <Row label="Always-on">
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <select
+                value={providers.settings.wakeWord ? "on" : "off"}
+                onChange={(e) => providers.update({ wakeWord: e.target.value === "on" })}
+                style={selectStyle}
+              >
+                <option value="off">Hold to talk</option>
+                <option value="on">Wake word</option>
+              </select>
+              <InfoTip text="With this on, the microphone stays open and the assistant waits for the wake word. Speech is detected on your machine and only sent for transcription when someone actually speaks — nothing is streamed continuously. Turning it off releases the microphone entirely." />
+            </span>
+          </Row>
+          {providers.settings.wakeWord && (
+            <>
+              <Row label="Wake phrase">
+                <input
+                  value={providers.settings.wakePhrase}
+                  onChange={(e) => providers.update({ wakePhrase: e.target.value })}
+                  placeholder="hey burrow"
+                  style={{ ...selectStyle, fontFamily: "var(--font-mono)", fontSize: 13 }}
+                />
+              </Row>
+              <Row label="Sleep after">
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="number"
+                    min={5}
+                    max={3600}
+                    value={providers.settings.idleSleepSeconds}
+                    onChange={(e) =>
+                      providers.update({
+                        idleSleepSeconds: Math.max(5, Number(e.target.value) || 45),
+                      })
+                    }
+                    style={{ ...selectStyle, width: 90, fontFamily: "var(--font-mono)", fontSize: 13 }}
+                  />
+                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>seconds</span>
+                </span>
+              </Row>
+              <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
+                Matching is phonetic, so ordinary mishearings of the phrase still wake
+                it. If yours is consistently missed, add what you actually get as a
+                second phrase, separated by a comma. After the idle period it drops
+                back to waiting for the wake word rather than switching off.
               </div>
             </>
           )}
