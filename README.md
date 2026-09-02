@@ -2,11 +2,18 @@
   <img src="public/banner.svg" alt="Burrow — dig until you hit the root of it" width="100%">
 </p>
 
+<p align="center">
+  <a href="https://deepwiki.com/ronak-create/burrow"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+</p>
+
 A voice-driven AI research assistant on an infinite canvas — a "digital detective board" for going deep on a topic. Bring your own documents, talk to an assistant that can search, fetch papers, write notes, build diagrams and tables, generate images, and lay it all out on the board with you.
 
 **Local-first and BYOK.** Canvases, documents, and conversation transcripts are plain files on your own disk. You supply your own API keys for whichever providers you want; they are stored in your OS keychain and nothing leaves your machine except the calls you configure.
 
-See [`DESIGN.md`](./DESIGN.md) for the full design, the decisions behind it, and what is deliberately deferred.
+## Docs
+
+- [`DESIGN.md`](./DESIGN.md) — the full design, the decisions behind it, and what is deliberately deferred. Written by hand, and the place to start.
+- [DeepWiki](https://deepwiki.com/ronak-create/burrow) — a generated tour of the codebase, and a question box you can ask about it. Machine-written from the source, so it is a map rather than an authority: where it and `DESIGN.md` disagree, the design doc is the one someone meant.
 
 ## Status
 
