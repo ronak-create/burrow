@@ -2,8 +2,6 @@
   <img src="assets/banner.svg" alt="Burrow — dig until you hit the root of it" width="100%">
 </p>
 
-# Burrow
-
 A voice-driven AI research assistant on an infinite canvas — a "digital detective board" for going deep on a topic. Bring your own documents, talk to an assistant that can search, fetch papers, write notes, build diagrams and tables, generate images, and lay it all out on the board with you.
 
 **Local-first and BYOK.** Canvases, documents, and conversation transcripts are plain files on your own disk. You supply your own API keys for whichever providers you want; they are stored in your OS keychain and nothing leaves your machine except the calls you configure.
