@@ -337,7 +337,9 @@ const fail = (id: string, msg: string): ToolResult => ({ id, content: msg, isErr
 function anchor(): XY {
   const { board } = useBoard.getState();
   const { x, y, zoom } = board.viewport;
-  if (zoom > 0) {
+  // No window means no viewport to centre on — the middle of the board is the
+  // honest answer, and it is what makes this module testable without a fake DOM.
+  if (zoom > 0 && typeof window !== "undefined") {
     return {
       x: (-x + window.innerWidth / 2) / zoom,
       y: (-y + window.innerHeight / 2) / zoom,
