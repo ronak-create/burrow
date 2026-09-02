@@ -1,6 +1,7 @@
 import { transcribe } from "./voice";
 import { encodeWav, resample, TARGET_RATE } from "../providers/stt/wav";
 import { rms, VAD_DEFAULTS, vadStep, worthTranscribing, type VadTuning } from "./vad";
+import { isFiller } from "./filler";
 
 /**
  * The always-on microphone.
@@ -156,10 +157,12 @@ export class ContinuousListener {
           new Blob([wav as BlobPart], { type: "audio/wav" }),
           "audio/wav",
         );
-        // Silence and room noise transcribe to nothing, or to a lone piece of
-        // punctuation. Neither is worth waking the state machine for.
+        // Silence and room noise do not transcribe to nothing — whisper invents
+        // a polite sentence for them. `isFiller` is where that goes, and it is
+        // dropped here rather than in the session so that an invented segment
+        // cannot reset the idle clock on its way past.
         this.failures = 0;
-        if (text.trim()) handlers.onUtterance(text);
+        if (!isFiller(text)) handlers.onUtterance(text);
       })
       .catch((e) => {
         this.failures++;

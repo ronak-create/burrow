@@ -177,9 +177,12 @@ describe("tuningFor", () => {
   });
 
   it("spans a useful range end to end", () => {
-    // Quiet enough for a distant laptop mic, deaf enough for a loud room.
-    expect(tuningFor(10).openRms).toBeLessThan(0.008);
-    expect(tuningFor(1).openRms).toBeGreaterThan(0.045);
+    // Both ends moved up with the anchor when it was re-measured on a real
+    // microphone (0.02 -> 0.05). The sensitive end is not as quiet as it was,
+    // which is the price of centring the scale on a real room rather than on a
+    // synthesiser; 0.016 still sits far below measured speech.
+    expect(tuningFor(10).openRms).toBeLessThan(0.017);
+    expect(tuningFor(1).openRms).toBeGreaterThan(0.12);
   });
 
   it("leaves the timings untouched", () => {

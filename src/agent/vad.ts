@@ -52,14 +52,25 @@ export interface VadTuning {
  * roughly seven times' headroom under real speech and every file opened and
  * closed exactly once. That rules out the threshold being too *high*.
  *
- * It does not rule out the opposite. Those samples came from a speech
- * synthesiser: clean, level, and with no room behind them. A real microphone in
- * a real room is quieter and noisier, so if these need moving it will be upward,
- * to stop the detector waking on the room itself.
+ * It did not rule out the opposite, and the opposite turned out to be true.
+ *
+ * Measured again 2 Sep 2026, this time on a real microphone in a real room. At
+ * 0.020 the detector opened on the room itself: three segments in one short test,
+ * two of which were silence that whisper filled in with "Thank you." At 0.050 the
+ * same voice in the same room produced exactly one segment, transcribed correctly
+ * and completely, with no spurious opens at all.
+ *
+ * So 0.050 is the anchor now — a number a microphone produced, replacing a number
+ * a speech synthesiser produced. `closeRms` keeps the same 0.6 ratio, which is
+ * what stopped a voice at the boundary from shredding one sentence into a dozen
+ * requests.
+ *
+ * One room, one microphone: better evidence than SAPI, not proof for every
+ * machine. The scale still spans 0.016 to 0.126, and moving it is one slider.
  */
 export const VAD_DEFAULTS: VadTuning = {
-  openRms: 0.02,
-  closeRms: 0.012,
+  openRms: 0.05,
+  closeRms: 0.03,
   // Long enough to survive the pause between clauses. Too short and "Hey Burrow —
   // add a note about Redis" arrives as two utterances, with the command half
   // stripped of the wake word that authorised it.
@@ -69,7 +80,12 @@ export const VAD_DEFAULTS: VadTuning = {
   // recording begins mid-wake-word and the match fails on the word it was
   // listening for.
   prerollMs: 400,
-  minUtteranceMs: 250,
+  // Raised from 250 on 2 Sep 2026. A live microphone opened on room noise twice
+  // in one short test and whisper turned both fragments into "Thank you." — the
+  // shorter the segment, the more of it whisper invents. Nothing the wake phrase
+  // needs is lost: "hey burrow" alone runs past 600ms, and pre-roll is added to
+  // whatever the detector captured.
+  minUtteranceMs: 400,
   maxUtteranceMs: 15000,
 }
 

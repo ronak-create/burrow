@@ -49,6 +49,8 @@ export interface Settings {
   /** Base URL for a custom OpenAI-compatible image endpoint, e.g. LocalAI. */
   imageBaseUrl: string;
   searchProvider: string;
+  /** Bumped when the meaning of a saved value changes; see `migrate`. */
+  settingsVersion: number;
   /** Canvas backdrop pattern. */
   canvasPattern: "dots" | "grid" | "plain";
   /**
@@ -75,6 +77,9 @@ export interface Settings {
    */
   micSensitivity: number;
 }
+
+/** Bumped when a saved value changes meaning. See `migrate`. */
+export const SETTINGS_VERSION = 2;
 
 const DEFAULTS: Settings = {
   // Local by default. A fresh install should be able to reason without the user
@@ -105,6 +110,7 @@ const DEFAULTS: Settings = {
   // that a room left alone stops treating everything said in it as a command.
   idleSleepSeconds: 45,
   micSensitivity: 5,
+  settingsVersion: SETTINGS_VERSION,
 };
 
 const SETTINGS_KEY = "burrow.settings";
@@ -113,10 +119,49 @@ function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     // Only preferences live here. Keys never do — those are in the OS keychain.
-    return raw ? { ...DEFAULTS, ...JSON.parse(raw) } : DEFAULTS;
+    if (!raw) return DEFAULTS;
+    return { ...DEFAULTS, ...migrate(JSON.parse(raw) as Partial<Settings>) };
   } catch {
     return DEFAULTS;
   }
+}
+
+/**
+ * Settings written before local speech-to-text existed.
+ *
+ * `sttBaseUrl` arrived with the local Whisper provider in milestone 4, and with
+ * it the default that makes voice input keyless. Anyone who had already run the
+ * app had a saved `sttProvider` — Groq, say — which merges *over* that default
+ * and never goes away, so voice input stays dead behind a key they do not have,
+ * with nothing on screen connecting the two. A fresh install works, which is why
+ * this went unnoticed for two milestones.
+ *
+ * Absence of the field is the only reliable marker of a pre-milestone-4 file, and
+ * the choice it discards was made when the keyless option did not exist. Any key
+ * they did have is still in the keychain and the provider is one select away.
+ *
+ * Version 2 moves `micSensitivity`. The slider is a multiplier over
+ * `VAD_DEFAULTS.openRms`, and that anchor went from 0.02 to 0.05 once a real
+ * microphone was measured — so the same saved number now means a threshold 2.5x
+ * higher, and someone who had tuned their room by ear would find the assistant
+ * had gone deaf overnight. The scale doubles every three steps, so 2.5x is very
+ * nearly four of them: shifting saved values by four preserves the threshold the
+ * user actually chose. Clamped, because the old scale had room at the sensitive
+ * end that the new one does not.
+ */
+export function migrate(saved: Partial<Settings>): Partial<Settings> {
+  let out = saved;
+
+  if (out.sttBaseUrl === undefined) {
+    const { sttProvider: _stale, ...rest } = out;
+    out = rest;
+  }
+
+  if ((out.settingsVersion ?? 1) < 2 && out.micSensitivity !== undefined) {
+    out = { ...out, micSensitivity: Math.min(10, out.micSensitivity + 4) };
+  }
+
+  return { ...out, settingsVersion: SETTINGS_VERSION };
 }
 
 interface RegistryState {

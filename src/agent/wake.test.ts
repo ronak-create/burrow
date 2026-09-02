@@ -133,6 +133,29 @@ describe("real whisper.cpp output", () => {
   });
 });
 
+/**
+ * The same model, but a real microphone and a real voice.
+ *
+ * Captured 2 Sep 2026 through MicCheck: getUserMedia and the AudioWorklet inside
+ * WebView2, the production detector, whisper.cpp on loopback. Two things came out
+ * of it that files could not have produced.
+ */
+describe("live microphone output", () => {
+  it("wakes on a fifth spelling of the name", () => {
+    // "Barou" — not one of the four the synthesizer produced, and not in any
+    // list this module ships. Soundex B600, same as the other four.
+    expect(matchWake("Hello, hello, Barou. Hello, Barou.", PHRASE).hit).toBe(true);
+  });
+
+  it("stays asleep through whisper's silence hallucination", () => {
+    // A segment the detector opened on room noise transcribes as "Thank you." —
+    // whisper's well-known filler for near-silence. It arrived twice in one
+    // three-segment test, so it is common, not a fluke.
+    expect(matchWake("Thank you.", PHRASE).hit).toBe(false);
+    expect(matchWake("Thanks for watching!", PHRASE).hit).toBe(false);
+  });
+});
+
 describe("matchAnyWake", () => {
   it("accepts any of the configured spellings", () => {
     const phrases = "hey burrow, computer";
