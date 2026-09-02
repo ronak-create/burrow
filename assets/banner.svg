@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 420" width="1280" height="420" role="img" aria-label="Burrow — dig until you hit the root of it">
+  <!--
+    README banner.
+
+    Built from the app icon rather than beside it: the same tunnel mouth, the same
+    three nested arches at decreasing lightness, the same violet ground gradient
+    (#8b6dff to #5b3fd1). A banner that invented its own identity would be the
+    third mark in a project with one.
+
+    Above ground is the board — dotted backdrop, note cards, edges between them,
+    which is the canvas pattern the app actually draws. Below is the burrow. That
+    is the whole product in one picture: what you can see, and what you dug for.
+
+    No external fonts, no scripts, no raster assets. It carries its own dark
+    background so it reads identically in GitHub's light and dark themes, which a
+    transparent SVG would not.
+  -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0a0912"/>
+      <stop offset="60%" stop-color="#120f26"/>
+      <stop offset="100%" stop-color="#1a1436"/>
+    </linearGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8b6dff"/>
+      <stop offset="100%" stop-color="#5b3fd1"/>
+    </linearGradient>
+    <linearGradient id="groundBack" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6a4fdd"/>
+      <stop offset="100%" stop-color="#412ea0"/>
+    </linearGradient>
+    <linearGradient id="depth" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2a1b6b"/>
+      <stop offset="100%" stop-color="#0d0722"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#a48cff" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#a48cff" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.2" fill="#ffffff" opacity="0.07"/>
+    </pattern>
+  </defs>
+
+  <rect width="1280" height="420" fill="url(#sky)"/>
+  <rect width="1280" height="330" fill="url(#dots)"/>
+
+  <!-- A wash behind the burrow mouth, so the eye lands there and not on the text. -->
+  <circle cx="965" cy="300" r="210" fill="url(#glow)"/>
+
+  <!-- The board above ground: cards, and the edges that make them an argument
+       rather than a pile. -->
+  <g stroke="#a48cff" stroke-opacity="0.5" fill="none" stroke-width="1.5">
+    <path d="M700 118 C 760 96, 800 96, 856 116"/>
+    <path d="M905 150 C 950 176, 985 186, 1035 180"/>
+    <path d="M745 168 C 790 200, 850 196, 890 168"/>
+  </g>
+  <g fill="#c9bfff">
+    <circle cx="700" cy="118" r="3"/>
+    <circle cx="856" cy="116" r="3"/>
+    <circle cx="905" cy="150" r="3"/>
+    <circle cx="1035" cy="180" r="3"/>
+    <circle cx="745" cy="168" r="3"/>
+    <circle cx="890" cy="168" r="3"/>
+  </g>
+
+  <g>
+    <rect x="636" y="74" width="126" height="76" rx="10" fill="#1b1638" stroke="#3d3170"/>
+    <rect x="650" y="90" width="66" height="6" rx="3" fill="#a48cff" opacity="0.85"/>
+    <rect x="650" y="106" width="94" height="5" rx="2.5" fill="#ffffff" opacity="0.28"/>
+    <rect x="650" y="119" width="80" height="5" rx="2.5" fill="#ffffff" opacity="0.28"/>
+    <rect x="650" y="132" width="54" height="5" rx="2.5" fill="#ffffff" opacity="0.28"/>
+
+    <rect x="856" y="80" width="118" height="70" rx="10" fill="#1b1638" stroke="#3d3170"/>
+    <rect x="870" y="96" width="52" height="6" rx="3" fill="#a48cff" opacity="0.85"/>
+    <rect x="870" y="112" width="86" height="5" rx="2.5" fill="#ffffff" opacity="0.28"/>
+    <rect x="870" y="125" width="62" height="5" rx="2.5" fill="#ffffff" opacity="0.28"/>
+
+    <rect x="1024" y="140" width="104" height="62" rx="10" fill="#1b1638" stroke="#3d3170"/>
+    <rect x="1038" y="155" width="44" height="6" rx="3" fill="#a48cff" opacity="0.85"/>
+    <rect x="1038" y="170" width="72" height="5" rx="2.5" fill="#ffffff" opacity="0.28"/>
+    <rect x="1038" y="183" width="50" height="5" rx="2.5" fill="#ffffff" opacity="0.28"/>
+  </g>
+
+  <!-- Fireflies. The garden is a night garden: the app is dark-first. -->
+  <g fill="#ffe9a8">
+    <circle cx="596" cy="196" r="2.4" opacity="0.9"/>
+    <circle cx="1146" cy="118" r="2" opacity="0.75"/>
+    <circle cx="1188" cy="228" r="2.6" opacity="0.85"/>
+    <circle cx="612" cy="286" r="2" opacity="0.7"/>
+    <circle cx="1096" cy="264" r="1.8" opacity="0.6"/>
+  </g>
+
+  <!-- Ground: two ridges, the far one darker, so the hill has depth at a glance. -->
+  <path d="M0 330 C 180 296, 330 316, 470 328 C 640 342, 760 300, 900 292 C 1050 284, 1170 306, 1280 296 L1280 420 L0 420 Z" fill="url(#groundBack)"/>
+  <path d="M0 360 C 150 336, 300 352, 452 358 C 620 364, 742 326, 900 320 C 1058 314, 1168 340, 1280 330 L1280 420 L0 420 Z" fill="url(#ground)"/>
+
+  <!-- The tunnel mouth, the app icon's geometry sunk into the hill. -->
+  <g>
+    <path d="M872 420 V352 a68 68 0 0 1 136 0 V420 Z" fill="#f4f1ff" opacity="0.82"/>
+    <path d="M886 420 V356 a54 54 0 0 1 108 0 V420 Z" fill="#a48cff" opacity="0.9"/>
+    <path d="M916 420 V366 a24 24 0 0 1 48 0 V420 Z" fill="url(#depth)"/>
+  </g>
+
+  <!-- The one already inside, which is the joke: you can see the ears and not
+       what it found. -->
+  <g fill="#0d0722">
+    <ellipse cx="933" cy="392" rx="4" ry="12" transform="rotate(-10 933 392)"/>
+    <ellipse cx="947" cy="392" rx="4" ry="12" transform="rotate(10 947 392)"/>
+  </g>
+  <g fill="#ffe9a8" opacity="0.85">
+    <circle cx="934" cy="410" r="2.2"/>
+    <circle cx="946" cy="410" r="2.2"/>
+  </g>
+
+  <!-- The one still deciding, sitting on the ridge. -->
+  <g fill="#1b1440">
+    <ellipse cx="772" cy="358" rx="26" ry="19"/>
+    <circle cx="748" cy="332" r="13"/>
+    <ellipse cx="742" cy="311" rx="4.5" ry="15" transform="rotate(-16 742 311)"/>
+    <ellipse cx="753" cy="310" rx="4.5" ry="15" transform="rotate(3 753 310)"/>
+    <circle cx="796" cy="366" r="7"/>
+    <ellipse cx="758" cy="376" rx="11" ry="5"/>
+  </g>
+  <circle cx="743" cy="330" r="1.9" fill="#ffe9a8" opacity="0.9"/>
+
+  <!-- Grass and a few flowers, drawn sparsely: a garden, not a lawn. -->
+  <g stroke="#2a1b6b" stroke-opacity="0.5" stroke-width="1.8" stroke-linecap="round" fill="none">
+    <path d="M654 375 c -2 -7, -5 -12, -10 -17"/>
+    <path d="M660 375 c 1 -9, 2 -16, 1 -24"/>
+    <path d="M666 375 c 2 -7, 6 -12, 11 -16"/>
+    <path d="M828 369 c -2 -6, -5 -11, -9 -15"/>
+    <path d="M834 369 c 1 -8, 1 -14, 0 -21"/>
+    <path d="M840 369 c 2 -6, 5 -11, 10 -14"/>
+    <path d="M1040 345 c -2 -6, -5 -10, -9 -14"/>
+    <path d="M1046 345 c 0 -8, 1 -14, 0 -20"/>
+    <path d="M1052 345 c 2 -6, 5 -10, 9 -13"/>
+    <path d="M1147 353 c -2 -5, -4 -9, -8 -13"/>
+    <path d="M1152 353 c 1 -7, 1 -13, 0 -18"/>
+    <path d="M1157 353 c 2 -5, 5 -9, 8 -11"/>
+    <path d="M520 391 c -2 -7, -5 -11, -9 -15"/>
+    <path d="M526 391 c 1 -8, 2 -14, 1 -21"/>
+    <path d="M532 391 c 2 -6, 6 -11, 10 -14"/>
+    <path d="M707 367 c -2 -5, -4 -9, -7 -13"/>
+    <path d="M712 367 c 1 -7, 1 -12, 0 -17"/>
+  </g>
+  <g fill="#ffd7ec">
+    <circle cx="700" cy="352" r="3.4"/>
+    <circle cx="1092" cy="330" r="3"/>
+    <circle cx="576" cy="376" r="3.2"/>
+  </g>
+
+  <!-- Wordmark. System stack only — a webfont would not load here. -->
+  <g font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+    <text x="88" y="196" font-size="104" font-weight="700" fill="#ffffff" letter-spacing="-2">Burrow</text>
+    <text x="94" y="238" font-size="23" font-weight="400" fill="#c9bfff" opacity="0.95" font-style="italic">Dig until you hit the root of it.</text>
+    <text x="94" y="286" font-size="17" font-weight="500" fill="#ffffff" opacity="0.6">A voice-driven research canvas. Local-first, bring your own keys.</text>
+  </g>
+</svg>
