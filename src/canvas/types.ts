@@ -57,6 +57,21 @@ export type ImageData = {
   file: string;
   prompt?: string;
   marker?: Marker;
+  /**
+   * How the picture is framed inside its block. Absent means fit the whole
+   * picture inside the card, which is what every image did before this existed
+   * and what every image still does until someone adjusts one.
+   *
+   * `zoom` is a multiple of the size that just fills the card, and `x`/`y` are
+   * percentages naming which part of the picture stays visible — the same pair
+   * CSS object-position takes.
+   *
+   * Deliberately non-destructive: the file in images/ is never rewritten, so a
+   * crop can be undone, redone, or reconsidered months later with the original
+   * still intact. board.json describes the board; it is not a second copy of
+   * your pictures.
+   */
+  crop?: { zoom: number; x: number; y: number };
 };
 
 export type DiagramNode = { id: string; label: string };
