@@ -7,7 +7,7 @@ import { ConnectHandles } from "./NoteBlock";
 import { useBoard } from "../store";
 import { useCurrentWorkspace } from "../../workspace/current";
 import { importDocument } from "../../workspace/api";
-import { toastError } from "../../ui/toast";
+import { toastError } from "../../ui/toastStore";
 import { openDocument } from "../../screens/documentViewerState";
 import { Icon } from "../../ui/icons";
 import type { DocBlock as DocBlockType } from "../types";
@@ -101,8 +101,17 @@ export default function DocBlockView({ id, data, selected }: NodeProps<DocBlockT
         onBlur={title.onBlur}
       />
 
+      {/*
+        A doc card exists to be opened, so opening it is the double click. Every
+        other block drills in to be edited on a double click; this one has nothing
+        to edit but its title, and reaching the reader used to cost three clicks —
+        select, drill in, then press Read. The button stays for discoverability.
+      */}
       <div
         className={NODRAG}
+        onDoubleClick={() => {
+          if (file) openDocument(file, data.title || file);
+        }}
         style={{
           flex: 1,
           minHeight: 0,

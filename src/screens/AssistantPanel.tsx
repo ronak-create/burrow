@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { runTurn, trimHistory } from "../agent/loop";
-import { toastError, toastWarn } from "../ui/toast";
+import { toastError, toastWarn } from "../ui/toastStore";
 import { Recorder, speak, stopSpeaking, transcribe } from "../agent/voice";
 import { ContinuousListener } from "../agent/listener";
 import { initialSession, sessionStep, type SessionEvent, type SessionState } from "../agent/session";

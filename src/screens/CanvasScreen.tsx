@@ -13,7 +13,7 @@ import { useAutosave, saveNow } from "../workspace/persist";
 import { useCurrentWorkspace } from "../workspace/current";
 import DocumentViewer from "./DocumentViewer";
 import DocumentsPanel from "./DocumentsPanel";
-import { toastError } from "../ui/toast";
+import { toastError } from "../ui/toastStore";
 import { updateWorkspaceMeta, type WorkspaceMeta } from "../workspace/api";
 
 /** Which shape variant the toolbar's shape buttons create. */

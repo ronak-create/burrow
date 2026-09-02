@@ -11,7 +11,8 @@ import {
 import { emptyBoard } from "./canvas/types";
 import { coerceBoard, countDropped } from "./canvas/coerce";
 import { seedGettingStarted } from "./workspace/gettingStarted";
-import { Toasts, toastWarn } from "./ui/toast";
+import { Toasts } from "./ui/toast";
+import { toastWarn } from "./ui/toastStore";
 
 /**
  * Two screens, no router: a workspace list and an open board. Opening a workspace

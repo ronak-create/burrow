@@ -3,7 +3,7 @@ import { ContinuousListener } from "../agent/listener";
 import { tuningFor } from "../agent/vad";
 import { useProviders } from "../providers/registry";
 import { setMicLevel, useMicLevel } from "../ui/ListeningIndicator";
-import { toastError } from "../ui/toast";
+import { toastError } from "../ui/toastStore";
 
 /**
  * Microphone self-test.

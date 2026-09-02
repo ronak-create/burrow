@@ -10,7 +10,7 @@ import {
 } from "../workspace/api";
 import { BurrowMark, Icon } from "../ui/icons";
 import Settings from "./Settings";
-import { toastError } from "../ui/toast";
+import { toastError } from "../ui/toastStore";
 import { GETTING_STARTED_NAME } from "../workspace/gettingStarted";
 
 /**

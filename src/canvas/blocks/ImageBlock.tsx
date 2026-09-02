@@ -7,7 +7,7 @@ import { ConnectHandles } from "./NoteBlock";
 import { useBoard } from "../store";
 import { useCurrentWorkspace } from "../../workspace/current";
 import { importImage, readImageDataUrl } from "../../workspace/api";
-import { toastError } from "../../ui/toast";
+import { toastError } from "../../ui/toastStore";
 import { Icon } from "../../ui/icons";
 import type { ImageBlock as ImageBlockType } from "../types";
 

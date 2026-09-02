@@ -8,7 +8,7 @@ import { useBoard } from "../canvas/store";
 import { findFreeSpot, boardCentre } from "../canvas/placement";
 import { DEFAULT_SIZE, type Block } from "../canvas/types";
 import { Icon } from "../ui/icons";
-import { toastError } from "../ui/toast";
+import { toastError } from "../ui/toastStore";
 
 /**
  * The reading surface (spec G).

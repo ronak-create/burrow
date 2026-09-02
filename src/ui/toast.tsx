@@ -1,6 +1,6 @@
-import { useEffect } from "react";
-import { create } from "zustand";
+import { useEffect, useState } from "react";
 import { Icon } from "./icons";
+import { TIMEOUT_MS, useToasts, type Toast } from "./toastStore";
 
 /**
  * Transient errors and warnings, shown top-right.
@@ -10,59 +10,14 @@ import { Icon } from "./icons";
  * failure raised by a screen you had since navigated away from was reported
  * nowhere at all. One surface, mounted once, fixes both.
  *
- * Errors persist until dismissed, because an error the user did not read is a bug
- * they will hit again. Warnings and notices time out on their own.
+ * Everything times out, including errors. Errors used to persist on the argument
+ * that an unread error is a bug you will hit again — but in practice the ones that
+ * stuck were the ones already explained elsewhere in the UI ("no key for groq",
+ * next to the setting that says the same thing), and a permanent card in the
+ * corner of a canvas app is read once and then merely in the way. Hovering holds
+ * a toast open, which covers the case the old rule was protecting: a long message
+ * still being read does not vanish mid-sentence.
  */
-
-export type ToastKind = "error" | "warn" | "info";
-
-export interface Toast {
-  id: number;
-  kind: ToastKind;
-  text: string;
-}
-
-const TIMEOUT_MS: Record<ToastKind, number | null> = {
-  error: null,
-  warn: 8000,
-  info: 5000,
-};
-
-let seq = 0;
-
-interface ToastState {
-  items: Toast[];
-  push: (kind: ToastKind, text: string) => void;
-  dismiss: (id: number) => void;
-}
-
-export const useToasts = create<ToastState>((set, get) => ({
-  items: [],
-  push: (kind, text) => {
-    const clean = text.trim();
-    if (!clean) return;
-    // Repeating the same failure should not stack — an agent loop can raise the
-    // identical error on every step.
-    if (get().items.some((t) => t.kind === kind && t.text === clean)) return;
-
-    const id = ++seq;
-    set((s) => ({ items: [...s.items, { id, kind, text: clean }] }));
-
-    const ms = TIMEOUT_MS[kind];
-    if (ms !== null) setTimeout(() => get().dismiss(id), ms);
-  },
-  dismiss: (id) => set((s) => ({ items: s.items.filter((t) => t.id !== id) })),
-}));
-
-/** Normalise anything thrown into readable text. */
-export function toastError(e: unknown): void {
-  const text = e instanceof Error ? e.message : String(e);
-  useToasts.getState().push("error", text);
-}
-
-export function toastWarn(text: string): void {
-  useToasts.getState().push("warn", text);
-}
 
 export function Toasts() {
   const items = useToasts((s) => s.items);
@@ -97,62 +52,86 @@ export function Toasts() {
       }}
     >
       {items.map((t) => (
-        <div
-          key={t.id}
-          role={t.kind === "error" ? "alert" : "status"}
-          style={{
-            pointerEvents: "auto",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 10,
-            padding: "11px 12px",
-            borderRadius: "var(--r-md)",
-            background: "var(--surface)",
-            border: `1px solid ${t.kind === "error" ? "var(--danger-line)" : "var(--border-strong)"}`,
-            boxShadow: "var(--shadow-pop)",
-          }}
-        >
-          <span
-            style={{
-              flexShrink: 0,
-              marginTop: 5,
-              width: 7,
-              height: 7,
-              borderRadius: 99,
-              background: t.kind === "error" ? "var(--danger)" : "var(--text-muted)",
-            }}
-          />
-          <span
-            className="selectable"
-            style={{
-              flex: 1,
-              fontSize: 13,
-              lineHeight: 1.45,
-              color: "var(--text)",
-              // Provider errors carry long unbroken payloads; wrap rather than clip.
-              overflowWrap: "anywhere",
-              whiteSpace: "pre-wrap",
-            }}
-          >
-            {t.text}
-          </span>
-          <button
-            onClick={() => dismiss(t.id)}
-            title="Dismiss"
-            aria-label="Dismiss"
-            style={{
-              flexShrink: 0,
-              display: "grid",
-              placeItems: "center",
-              width: 20,
-              height: 20,
-              color: "var(--text-faint)",
-            }}
-          >
-            <Icon name="close" size={14} />
-          </button>
-        </div>
+        <ToastItem key={t.id} toast={t} onDismiss={dismiss} />
       ))}
+    </div>
+  );
+}
+
+function ToastItem({ toast: t, onDismiss }: { toast: Toast; onDismiss: (id: number) => void }) {
+  const [held, setHeld] = useState(false);
+  const [closeHot, setCloseHot] = useState(false);
+
+  // Held open while the pointer is on it, and the clock restarts when the
+  // pointer leaves — someone who moved the mouse there to read it gets the full
+  // duration again rather than the remainder of a timer they never saw.
+  useEffect(() => {
+    if (held) return;
+    const timer = setTimeout(() => onDismiss(t.id), TIMEOUT_MS[t.kind]);
+    return () => clearTimeout(timer);
+  }, [t.id, t.kind, held, onDismiss]);
+
+  return (
+    <div
+      role={t.kind === "error" ? "alert" : "status"}
+      onMouseEnter={() => setHeld(true)}
+      onMouseLeave={() => setHeld(false)}
+      style={{
+        pointerEvents: "auto",
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 10,
+        padding: "11px 12px",
+        borderRadius: "var(--r-md)",
+        background: "var(--surface)",
+        border: `1px solid ${t.kind === "error" ? "var(--danger-line)" : "var(--border-strong)"}`,
+        boxShadow: "var(--shadow-pop)",
+      }}
+    >
+      <span
+        style={{
+          flexShrink: 0,
+          marginTop: 5,
+          width: 7,
+          height: 7,
+          borderRadius: 99,
+          background: t.kind === "error" ? "var(--danger)" : "var(--text-muted)",
+        }}
+      />
+      <span
+        className="selectable"
+        style={{
+          flex: 1,
+          fontSize: 13,
+          lineHeight: 1.45,
+          color: "var(--text)",
+          // Provider errors carry long unbroken payloads; wrap rather than clip.
+          overflowWrap: "anywhere",
+          whiteSpace: "pre-wrap",
+        }}
+      >
+        {t.text}
+      </span>
+      <button
+        onClick={() => onDismiss(t.id)}
+        onMouseEnter={() => setCloseHot(true)}
+        onMouseLeave={() => setCloseHot(false)}
+        title="Dismiss"
+        aria-label="Dismiss"
+        style={{
+          flexShrink: 0,
+          display: "grid",
+          placeItems: "center",
+          width: 22,
+          height: 22,
+          borderRadius: "var(--r-sm)",
+          border: "1px solid var(--border)",
+          background: closeHot ? "var(--surface-2)" : "transparent",
+          color: closeHot ? "var(--text)" : "var(--text-muted)",
+        }}
+      >
+        <Icon name="close" size={14} />
+      </button>
     </div>
   );
 }

@@ -14,7 +14,7 @@ import {
 } from "../providers/registry";
 import { deleteApiKey, setApiKey } from "../workspace/api";
 import { Icon } from "../ui/icons";
-import { toastError, toastWarn } from "../ui/toast";
+import { toastError, toastWarn } from "../ui/toastStore";
 import { listCustomModels } from "../providers/llm/custom";
 import { listCustomImageModels } from "../providers/image";
 import { listLocalWhisperModels } from "../providers/stt/local";
@@ -27,10 +27,11 @@ const THEMES: Array<{ pref: ThemePref; label: string }> = [
   { pref: "dark", label: "Dark" },
 ];
 
-type SettingsTab = "appearance" | "canvas" | "api";
+type SettingsTab = "appearance" | "canvas" | "voice" | "api";
 const TABS: Array<{ id: SettingsTab; label: string }> = [
   { id: "appearance", label: "Appearance" },
   { id: "canvas", label: "Canvas" },
+  { id: "voice", label: "Voice" },
   { id: "api", label: "API config" },
 ];
 
@@ -538,6 +539,163 @@ export default function Settings({ onClose }: { onClose: () => void }) {
         </Section>
         )}
 
+        {tab === "voice" && (
+        <>
+        <Section title="Speech-to-text">
+          <Row label="Provider">
+            <select
+              value={providers.settings.sttProvider}
+              onChange={(e) => providers.update({ sttProvider: e.target.value })}
+              style={selectStyle}
+            >
+              {STT_PROVIDERS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </Row>
+          {stt?.freeformModel && (
+            <>
+              <Row label="Endpoint">
+                <input
+                  value={providers.settings.sttBaseUrl}
+                  onChange={(e) => providers.update({ sttBaseUrl: e.target.value })}
+                  placeholder="http://127.0.0.1:8080/v1"
+                  style={{ ...selectStyle, fontFamily: "var(--font-mono)", fontSize: 13 }}
+                />
+              </Row>
+              <Row label="Model">
+                <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input
+                    list="burrow-local-stt-models"
+                    value={providers.settings.sttModel}
+                    onChange={(e) => providers.update({ sttModel: e.target.value })}
+                    placeholder="leave blank for whisper.cpp"
+                    style={{ ...selectStyle, fontFamily: "var(--font-mono)", fontSize: 13 }}
+                  />
+                  <datalist id="burrow-local-stt-models">
+                    {sttFound.map((m) => (
+                      <option key={m} value={m} />
+                    ))}
+                  </datalist>
+                  <button
+                    onClick={() => void detectStt()}
+                    disabled={detectingStt}
+                    title="Ask the endpoint which models it serves"
+                    style={{
+                      whiteSpace: "nowrap",
+                      padding: "6px 11px",
+                      borderRadius: "var(--r-sm)",
+                      fontSize: 13,
+                      border: "1px solid var(--border)",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {detectingStt ? "…" : "Detect"}
+                  </button>
+                </span>
+              </Row>
+              <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
+                A Whisper server on your own machine — whisper.cpp's bundled{" "}
+                <code style={{ fontFamily: "var(--font-mono)" }}>server</code>, Speaches,
+                LocalAI or vLLM. No key and no account. Leave the model blank for
+                whisper.cpp, which serves the one it was started with.
+              </div>
+            </>
+          )}
+          {stt && !stt.keyOptional && (
+            <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
+              {providers.configured.includes(stt.id)
+                ? stt.label + " is set up. The key lives under API config."
+                : stt.label + " needs a key, which is entered under API config."}
+            </div>
+          )}
+        </Section>
+
+        <Section title="Microphone">
+          {/*
+            Always shown, not only when always-on is enabled: the commonest reason
+            to want this is that the microphone appears not to work, and that is
+            exactly when someone has already switched the feature back off.
+          */}
+          <div style={{ paddingTop: 6 }}>
+            <MicCheck />
+          </div>
+        </Section>
+
+        <Section title="Wake word">
+          <Row label="Always-on">
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <select
+                value={providers.settings.wakeWord ? "on" : "off"}
+                onChange={(e) => providers.update({ wakeWord: e.target.value === "on" })}
+                style={selectStyle}
+              >
+                <option value="off">Hold to talk</option>
+                <option value="on">Wake word</option>
+              </select>
+              <InfoTip text="With this on, the microphone stays open and the assistant waits for the wake word. Speech is detected on your machine and only sent for transcription when someone actually speaks — nothing is streamed continuously. Turning it off releases the microphone entirely." />
+            </span>
+          </Row>
+          {providers.settings.wakeWord && (
+            <>
+              <Row label="Wake phrase">
+                <input
+                  value={providers.settings.wakePhrase}
+                  onChange={(e) => providers.update({ wakePhrase: e.target.value })}
+                  placeholder="hey burrow"
+                  style={{ ...selectStyle, fontFamily: "var(--font-mono)", fontSize: 13 }}
+                />
+              </Row>
+              <Row label="Sleep after">
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="number"
+                    min={5}
+                    max={3600}
+                    value={providers.settings.idleSleepSeconds}
+                    onChange={(e) =>
+                      providers.update({
+                        idleSleepSeconds: Math.max(5, Number(e.target.value) || 45),
+                      })
+                    }
+                    style={{ ...selectStyle, width: 90, fontFamily: "var(--font-mono)", fontSize: 13 }}
+                  />
+                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>seconds</span>
+                </span>
+              </Row>
+              <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
+                Matching is phonetic, so ordinary mishearings of the phrase still wake
+                it. If yours is consistently missed, add what you actually get as a
+                second phrase, separated by a comma. After the idle period it drops
+                back to waiting for the wake word rather than switching off.
+              </div>
+            </>
+          )}
+        </Section>
+
+        <Section title="Spoken replies">
+          <Row label="Read answers aloud">
+            <select
+              value={providers.settings.voiceReplies ? "on" : "off"}
+              onChange={(e) => providers.update({ voiceReplies: e.target.value === "on" })}
+              disabled={!providers.speechAvailable}
+              style={selectStyle}
+            >
+              <option value="off">Off</option>
+              <option value="on">On</option>
+            </select>
+          </Row>
+          <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
+            {providers.speechAvailable
+              ? "Uses the voices already installed on this machine. No key, and nothing leaves it. The speaker button in the assistant panel toggles the same setting."
+              : "This machine reports no speech engine, so replies stay text-only."}
+          </div>
+        </Section>
+        </>
+        )}
+
         {tab === "api" && (
         <>
         <Section title="What's working">
@@ -652,127 +810,6 @@ export default function Settings({ onClose }: { onClose: () => void }) {
               </select>
             </Row>
           )}
-          <Row label="Speech-to-text">
-            <select
-              value={providers.settings.sttProvider}
-              onChange={(e) => providers.update({ sttProvider: e.target.value })}
-              style={selectStyle}
-            >
-              {STT_PROVIDERS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </Row>
-          {stt?.freeformModel && (
-            <>
-              <Row label="Endpoint">
-                <input
-                  value={providers.settings.sttBaseUrl}
-                  onChange={(e) => providers.update({ sttBaseUrl: e.target.value })}
-                  placeholder="http://127.0.0.1:8080/v1"
-                  style={{ ...selectStyle, fontFamily: "var(--font-mono)", fontSize: 13 }}
-                />
-              </Row>
-              <Row label="Model">
-                <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <input
-                    list="burrow-local-stt-models"
-                    value={providers.settings.sttModel}
-                    onChange={(e) => providers.update({ sttModel: e.target.value })}
-                    placeholder="leave blank for whisper.cpp"
-                    style={{ ...selectStyle, fontFamily: "var(--font-mono)", fontSize: 13 }}
-                  />
-                  <datalist id="burrow-local-stt-models">
-                    {sttFound.map((m) => (
-                      <option key={m} value={m} />
-                    ))}
-                  </datalist>
-                  <button
-                    onClick={() => void detectStt()}
-                    disabled={detectingStt}
-                    title="Ask the endpoint which models it serves"
-                    style={{
-                      whiteSpace: "nowrap",
-                      padding: "6px 11px",
-                      borderRadius: "var(--r-sm)",
-                      fontSize: 13,
-                      border: "1px solid var(--border)",
-                      color: "var(--text-muted)",
-                    }}
-                  >
-                    {detectingStt ? "…" : "Detect"}
-                  </button>
-                </span>
-              </Row>
-              <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
-                A Whisper server on your own machine — whisper.cpp's bundled{" "}
-                <code style={{ fontFamily: "var(--font-mono)" }}>server</code>, Speaches,
-                LocalAI or vLLM. No key and no account. Leave the model blank for
-                whisper.cpp, which serves the one it was started with.
-              </div>
-            </>
-          )}
-        </Section>
-
-        <Section title="Voice">
-          <Row label="Always-on">
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <select
-                value={providers.settings.wakeWord ? "on" : "off"}
-                onChange={(e) => providers.update({ wakeWord: e.target.value === "on" })}
-                style={selectStyle}
-              >
-                <option value="off">Hold to talk</option>
-                <option value="on">Wake word</option>
-              </select>
-              <InfoTip text="With this on, the microphone stays open and the assistant waits for the wake word. Speech is detected on your machine and only sent for transcription when someone actually speaks — nothing is streamed continuously. Turning it off releases the microphone entirely." />
-            </span>
-          </Row>
-          {providers.settings.wakeWord && (
-            <>
-              <Row label="Wake phrase">
-                <input
-                  value={providers.settings.wakePhrase}
-                  onChange={(e) => providers.update({ wakePhrase: e.target.value })}
-                  placeholder="hey burrow"
-                  style={{ ...selectStyle, fontFamily: "var(--font-mono)", fontSize: 13 }}
-                />
-              </Row>
-              <Row label="Sleep after">
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <input
-                    type="number"
-                    min={5}
-                    max={3600}
-                    value={providers.settings.idleSleepSeconds}
-                    onChange={(e) =>
-                      providers.update({
-                        idleSleepSeconds: Math.max(5, Number(e.target.value) || 45),
-                      })
-                    }
-                    style={{ ...selectStyle, width: 90, fontFamily: "var(--font-mono)", fontSize: 13 }}
-                  />
-                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>seconds</span>
-                </span>
-              </Row>
-              <div style={{ fontSize: 12, color: "var(--text-faint)", paddingTop: 2 }}>
-                Matching is phonetic, so ordinary mishearings of the phrase still wake
-                it. If yours is consistently missed, add what you actually get as a
-                second phrase, separated by a comma. After the idle period it drops
-                back to waiting for the wake word rather than switching off.
-              </div>
-            </>
-          )}
-          {/*
-            Always shown, not only when always-on is enabled: the commonest reason
-            to want this is that the microphone appears not to work, and that is
-            exactly when someone has already switched the feature back off.
-          */}
-          <div style={{ paddingTop: 6 }}>
-            <MicCheck />
-          </div>
         </Section>
 
         <Section title="Research and images">

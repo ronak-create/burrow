@@ -17,7 +17,7 @@ import { boardCentre, findFreeSpot } from "../canvas/placement";
 import { DEFAULT_SIZE, type Block } from "../canvas/types";
 import { openDocument } from "./documentViewerState";
 import { Icon } from "../ui/icons";
-import { toastError } from "../ui/toast";
+import { toastError } from "../ui/toastStore";
 
 /** Extensions that land in <workspace>/images/ rather than /documents/. */
 const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"];
