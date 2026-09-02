@@ -208,8 +208,11 @@ export function MarkerPin({ id }: { id: string }) {
       }}
       style={{
         position: "absolute",
+        // Top-left, because the delete control owns the other corner. They used
+        // to share it, so selecting a flagged block hid the flag underneath the
+        // cross — the one moment you are most likely to be dealing with it.
         top: -9,
-        right: -9,
+        left: -9,
         width: 20,
         height: 20,
         borderRadius: 99,
