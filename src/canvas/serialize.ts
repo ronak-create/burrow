@@ -9,7 +9,9 @@ import {
   type NoteData,
   type TableData,
   type FrameData,
+  type Rect,
   type ShapeData,
+  type Size,
   type TextData,
 } from "./types";
 
@@ -90,6 +92,10 @@ function summarise(b: Block): Record<string, unknown> {
 export interface BoardView {
   blockCount: number;
   bounds: { x: number; y: number; width: number; height: number } | null;
+  /** Ids the user has selected right now. What "this one" refers to. */
+  selection: string[];
+  /** The part of the board on screen, in board coordinates. Null if unknown. */
+  visible: { x: number; y: number; width: number; height: number } | null;
   blocks: Array<Record<string, unknown>>;
   frames: Array<Record<string, unknown>>;
   connections: string[];
@@ -97,7 +103,33 @@ export interface BoardView {
   note?: string;
 }
 
-export function boardView(board: Board): BoardView {
+/**
+ * What the user can see, from the stored viewport and the size of the canvas.
+ *
+ * React Flow's viewport is a translation and a scale applied to the board, so the
+ * visible region is the inverse of that over the canvas rectangle. Screen size is
+ * passed in rather than read here, because this module is pure — it is also
+ * stringified into a worklet's sibling and tested in node, where there is no DOM.
+ */
+function visibleRect(board: Board, screen: Size | null | undefined) {
+  if (!screen || !screen.width || !screen.height) return null;
+  const { x, y, zoom } = board.viewport;
+  if (!zoom) return null;
+  // `|| 0` because a viewport at the origin rounds to -0, which is a real value
+  // that fails an equality check and reads as "-0" to anyone debugging this.
+  return {
+    x: Math.round(-x / zoom) || 0,
+    y: Math.round(-y / zoom) || 0,
+    width: Math.round(screen.width / zoom),
+    height: Math.round(screen.height / zoom),
+  };
+}
+
+const intersects = (a: Rect, b: { x: number; y: number; width: number; height: number }) =>
+  a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+
+export function boardView(board: Board, screen?: Size | null): BoardView {
+  const visible = visibleRect(board, screen);
   const loose = board.nodes.filter((n) => n.type !== "frame");
   const frames = board.nodes.filter((n) => n.type === "frame");
 
@@ -114,6 +146,8 @@ export function boardView(board: Board): BoardView {
       at: [Math.round(r.x), Math.round(r.y)],
       size: [Math.round(r.width), Math.round(r.height)],
       contains: inside.map((b) => b.id),
+      ...(f.selected ? { selected: true } : {}),
+      ...(visible && !intersects(r, visible) ? { offScreen: true } : {}),
     };
   });
 
@@ -126,6 +160,10 @@ export function boardView(board: Board): BoardView {
       size: [Math.round(r.width), Math.round(r.height)],
       ...(contained.has(b.id) ? { inFrame: contained.get(b.id) } : {}),
       ...((b.data as { marker?: string }).marker ? { flagged: true } : {}),
+      // Both are omitted when false so the common case stays compact: most boards
+      // have nothing selected and most blocks are on screen.
+      ...(b.selected ? { selected: true } : {}),
+      ...(visible && !intersects(r, visible) ? { offScreen: true } : {}),
       ...summarise(b),
     };
   });
@@ -155,6 +193,8 @@ export function boardView(board: Board): BoardView {
   return {
     blockCount: board.nodes.length,
     bounds,
+    selection: board.nodes.filter((n) => n.selected).map((n) => n.id),
+    visible,
     blocks,
     frames: frameViews,
     connections,
@@ -166,8 +206,8 @@ export function boardView(board: Board): BoardView {
 }
 
 /** Compact JSON for the prompt. */
-export function serializeBoard(board: Board): string {
-  return JSON.stringify(boardView(board));
+export function serializeBoard(board: Board, screen?: Size | null): string {
+  return JSON.stringify(boardView(board, screen));
 }
 
 /**

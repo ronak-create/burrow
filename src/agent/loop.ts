@@ -16,6 +16,22 @@ import { availableTools, runTool } from "./tools";
 
 const MAX_STEPS = 6;
 
+/**
+ * The size of the canvas, so the board view can say what is on screen.
+ *
+ * Read from the DOM rather than kept in the store: the size is owned by the
+ * browser, changes with the window and with the assistant panel's splitter, and a
+ * copy in the store would be one more thing to keep in sync for no gain. Missing
+ * means the view reports no visible region, which is the honest answer when the
+ * canvas is not mounted.
+ */
+function canvasSize(): { width: number; height: number } | null {
+  const el = typeof document === "undefined" ? null : document.querySelector(".react-flow");
+  if (!el) return null;
+  const { clientWidth: width, clientHeight: height } = el as HTMLElement;
+  return width && height ? { width, height } : null;
+}
+
 function systemPrompt(): string {
   const board = useBoard.getState().board;
   return [
@@ -30,11 +46,15 @@ function systemPrompt(): string {
     "- If you are unsure about something on the board, do not interrupt. Either ask at the end of your",
     "  reply, or use flag_block to leave a '?' marker the user can address whenever they like.",
     "- Framing regroups someone's thinking. On a board that already has work, ask before adding a frame.",
+    "- 'this', 'that one' and 'here' mean the selection. If nothing is selected and the reference is",
+    "  ambiguous, ask which block rather than guessing — acting on the wrong one is worse than a question.",
+    "- Blocks marked offScreen are on the board but not in front of the user, so do not talk about them",
+    "  as something they are looking at.",
     "",
     `The board is currently ${isSparse(board) ? "nearly empty, so you may organise it freely" : "already in use, so treat it as the user's work"}.`,
     "",
     "Current board state (JSON):",
-    serializeBoard(board),
+    serializeBoard(board, canvasSize()),
   ].join("\n");
 }
 
