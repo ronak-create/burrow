@@ -58,12 +58,31 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
   // first render's send.
   const sendRef = useRef<(text: string) => void>(() => {});
 
-  const dispatch = useCallback((event: SessionEvent) => {
-    const result = sessionStep(sessionRef.current, event, cfgRef.current);
-    sessionRef.current = result.state;
-    setSession(result.state);
-    if (result.command) sendRef.current(result.command);
+  /**
+   * The turn in flight, so it can be given up on.
+   *
+   * A local model on a laptop can think for minutes, and until there was a way
+   * to stop one the only options were to wait it out or close the app. Aborting
+   * the request is the honest version: the provider call is cancelled, tools stop
+   * running between steps, and nothing half-finished is written to the board.
+   */
+  const inFlight = useRef<AbortController | null>(null);
+
+  const stopTurn = useCallback(() => {
+    inFlight.current?.abort();
+    void stopSpeaking();
   }, []);
+
+  const dispatch = useCallback(
+    (event: SessionEvent) => {
+      const result = sessionStep(sessionRef.current, event, cfgRef.current);
+      sessionRef.current = result.state;
+      setSession(result.state);
+      if (result.cancel) stopTurn();
+      if (result.command) sendRef.current(result.command);
+    },
+    [stopTurn],
+  );
 
   const wakeReady = canWake(providers);
   // Read through a ref rather than listed as a dependency: changing sensitivity
@@ -86,7 +105,7 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
       .start(
         {
           onLevel: setMicLevel,
-          onUtterance: (text) => dispatch({ type: "heard", text }),
+          onUtterance: (text, capturedAt) => dispatch({ type: "heard", text, capturedAt }),
           onError: toastError,
           onStopped: (reason) => {
             // The engine released the microphone on its own. Flip the setting
@@ -119,7 +138,12 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
   // reply must not be transcribed back into a command, and audio captured while
   // the push-to-talk button is held is already being handled by that path.
   useEffect(() => {
-    dispatch({ type: "busy", value: status !== "idle" });
+    dispatch({
+      type: "busy",
+      value: status !== "idle",
+      at: Date.now(),
+      speaking: status === "speaking",
+    });
   }, [status, dispatch]);
 
   useEffect(() => {
@@ -159,8 +183,11 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
     void appendTranscript(root, wsId, { role: "user", text: trimmed, at: new Date().toISOString() });
 
     setStatus("thinking");
+    const turn = new AbortController();
+    inFlight.current = turn;
     try {
-      const outcome = await runTurn(trimmed, history.current);
+      const outcome = await runTurn(trimmed, history.current, {}, turn.signal);
+      if (turn.signal.aborted) return;
 
       history.current = trimHistory([
         ...history.current,
@@ -181,8 +208,10 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
         await speak(outcome.reply);
       }
     } catch (e) {
-      toastError(e);
+      // Abandoning a turn is a thing the user did, not a failure to report.
+      if (!turn.signal.aborted) toastError(e);
     } finally {
+      if (inFlight.current === turn) inFlight.current = null;
       setStatus("idle");
     }
   }
@@ -317,6 +346,28 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
           </button>
         </div>
 
+        {busy ? (
+          <button
+            onClick={stopTurn}
+            title="Stop this turn"
+            style={{
+              width: "100%",
+              marginTop: 12,
+              padding: "9px 0",
+              borderRadius: "var(--r-md)",
+              fontWeight: 500,
+              fontSize: 14,
+              color: "var(--text)",
+              border: "1px solid var(--border-strong)",
+              background: "var(--surface-2)",
+            }}
+          >
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 7, justifyContent: "center" }}>
+              <Icon name="close" size={15} />
+              {status === "speaking" ? "Stop speaking" : "Stop"}
+            </span>
+          </button>
+        ) : (
         <button
           disabled={!micReady || busy}
           onPointerDown={() => void beginListening()}
@@ -347,6 +398,7 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
             {status === "listening" ? "Release to send" : "Hold to speak"}
           </span>
         </button>
+        )}
       </div>
 
       <div ref={scroller} style={{ flex: 1, overflowY: "auto", padding: 14, minHeight: 0 }}>

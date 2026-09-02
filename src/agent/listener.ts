@@ -43,8 +43,15 @@ const MAX_FAILURES = 3;
 export interface ListenerHandlers {
   /** Current input level, 0–1, for the indicator. */
   onLevel?(level: number): void;
-  /** A finished utterance, transcribed. Never called with empty text. */
-  onUtterance(text: string): void;
+  /**
+   * A finished utterance, transcribed. Never called with empty text.
+   *
+   * `capturedAt` is when the audio began, which is not when this is called:
+   * transcription takes seconds, and the difference is exactly the window in
+   * which the assistant's own reply can come back as a command. The session
+   * needs the capture time to tell the two apart.
+   */
+  onUtterance(text: string, capturedAt: number): void;
   onError?(error: unknown): void;
   /**
    * The listener shut itself down and the microphone is released. The caller has
@@ -147,6 +154,10 @@ export class ContinuousListener {
       return;
     }
 
+    // Taken before the queue, not inside it: by the time this runs, anything
+    // ahead of it in the queue may have been transcribing for seconds.
+    const capturedAt = Date.now() - (samples.length / rate) * 1000;
+
     this.pending++;
     this.queue = this.queue
       .then(async () => {
@@ -162,7 +173,7 @@ export class ContinuousListener {
         // dropped here rather than in the session so that an invented segment
         // cannot reset the idle clock on its way past.
         this.failures = 0;
-        if (!isFiller(text)) handlers.onUtterance(text);
+        if (!isFiller(text)) handlers.onUtterance(text, capturedAt);
       })
       .catch((e) => {
         this.failures++;

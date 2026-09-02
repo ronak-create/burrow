@@ -140,6 +140,37 @@ describe("real whisper.cpp output", () => {
  * WebView2, the production detector, whisper.cpp on loopback. Two things came out
  * of it that files could not have produced.
  */
+/**
+ * The blind spot, named.
+ *
+ * Every mishearing the matcher recovers differs from the name after the first
+ * consonant — Baro, Barrow, Burro, Barou all soundex to B600. Soundex never folds
+ * the first letter, so a mishearing that changes it is unreachable by design, and
+ * two have now been seen: Varro (V600) from a real microphone on ggml-base.en,
+ * and Haber-o (H160) from ggml-small.en on the david sample.
+ *
+ * Recorded as tests rather than fixed. Widening the edit budget far enough to
+ * cross a consonant would start matching borrow, arrow and borrower, which
+ * is the trade the phrase list exists to avoid: a user who consistently gets one
+ * of these adds it as a second phrase and is done.
+ */
+describe("first-consonant mishearings cannot be matched", () => {
+  it("misses them, and this is the documented cost", () => {
+    expect(matchWake("Hey Varro, add a note about we got test.", PHRASE).hit).toBe(false);
+    expect(matchWake("Haber-o!", PHRASE).hit).toBe(false);
+  });
+
+  it("and the escape hatch is what recovers them", () => {
+    const phrases = "hey burrow, hey varro";
+    expect(matchAnyWake("Hey Varro, add a note about we got test.", phrases)).toEqual({
+      hit: true,
+      rest: "add a note about we got test",
+    });
+    // The name it was given still works; an alias adds, it does not replace.
+    expect(matchAnyWake("Hey Burrow, add a note", phrases).hit).toBe(true);
+  });
+});
+
 describe("live microphone output", () => {
   it("wakes on a fifth spelling of the name", () => {
     // "Barou" — not one of the four the synthesizer produced, and not in any

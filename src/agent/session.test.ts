@@ -27,6 +27,7 @@ function play(events: SessionEvent[], from: SessionState = initialSession()) {
     if (r.command) commands.push(r.command);
     if (r.woke) flags.push("woke");
     if (r.slept) flags.push("slept");
+    if (r.cancel) flags.push("cancel");
   }
   return { state, commands, flags };
 }
@@ -63,7 +64,7 @@ describe("enable and disable", () => {
       [{ type: "busy", value: true }, { type: "disable" }, { type: "enable" }],
       active(),
     );
-    expect(state).toEqual({ mode: "wake", idleMs: 0, busy: false });
+    expect(state).toEqual({ ...initialSession(), mode: "wake" });
   });
 
   it("ignores enable when already listening", () => {
@@ -215,5 +216,108 @@ describe("idle auto-sleep", () => {
     );
     expect(state.mode).toBe("active");
     expect(flags).toEqual(["slept", "woke"]);
+  });
+});
+
+/**
+ * The assistant answering itself.
+ *
+ * Observed 2 Sep 2026, and it is the reason capture time exists on the event: a
+ * segment recorded through the spoken reply was transcribed while the reply was
+ * still playing, arrived after everything went idle, and was submitted as a
+ * command. The screenshot shows the assistant quoting its own question back at
+ * itself. Ignoring capture while busy did not prevent it, because by the time the
+ * text existed the session was no longer busy.
+ */
+describe("its own voice is not a command", () => {
+  const REPLY_AT = 10_000;
+
+  /** Thought, spoke, and fell silent at REPLY_AT. */
+  const afterSpeaking = () =>
+    play(
+      [
+        { type: "busy", value: true, at: REPLY_AT - 3_000, speaking: true },
+        { type: "busy", value: false, at: REPLY_AT },
+      ],
+      active(),
+    ).state;
+
+  it("drops text whose audio was captured while it was talking", () => {
+    const { commands } = play(
+      [
+        {
+          type: "heard",
+          text: "Or did you mean you'd like me to search for info on vehicle testing?",
+          capturedAt: REPLY_AT - 1_500,
+        },
+      ],
+      afterSpeaking(),
+    );
+
+    expect(commands).toEqual([]);
+  });
+
+  it("stays deaf for a moment after the speakers stop", () => {
+    // The status flips when the utterance ends, not when the sound has left the
+    // room.
+    const { commands } = play(
+      [{ type: "heard", text: "add a note about Redis", capturedAt: REPLY_AT + 200 }],
+      afterSpeaking(),
+    );
+
+    expect(commands).toEqual([]);
+  });
+
+  it("hears the user again once the room is genuinely quiet", () => {
+    const { commands } = play(
+      [{ type: "heard", text: "add a note about Redis", capturedAt: REPLY_AT + 2_000 }],
+      afterSpeaking(),
+    );
+
+    expect(commands).toEqual(["add a note about Redis"]);
+  });
+
+  it("does not need a capture time to work as it always did", () => {
+    // The guard is additive: an event without a timestamp is still a command.
+    const { commands } = play([{ type: "heard", text: "add a note about Redis" }], active());
+
+    expect(commands).toEqual(["add a note about Redis"]);
+  });
+});
+
+/**
+ * Stopping a turn out loud.
+ *
+ * A local model can think for minutes, and the microphone is otherwise ignored
+ * for the whole of it — so the one thing a user most wants to say while waiting
+ * was the one thing that could not be said.
+ */
+describe("stop", () => {
+  const thinking = () => play([{ type: "busy", value: true, at: 0 }], active()).state;
+  const speaking = () =>
+    play([{ type: "busy", value: true, at: 0, speaking: true }], active()).state;
+
+  it("cancels the turn while it is thinking", () => {
+    for (const text of ["stop", "Stop.", "cancel that", "never mind"]) {
+      expect(play([{ type: "heard", text }], thinking()).flags, text).toEqual(["cancel"]);
+    }
+  });
+
+  it("is not triggered by a sentence that merely contains it", () => {
+    const { flags } = play(
+      [{ type: "heard", text: "add a note about the stop word design" }],
+      thinking(),
+    );
+
+    expect(flags).toEqual([]);
+  });
+
+  it("is ignored while the assistant is speaking, where the voice may be its own", () => {
+    expect(play([{ type: "heard", text: "stop" }], speaking()).flags).toEqual([]);
+  });
+
+  it("does not become a command", () => {
+    // Cancelling is not something to answer.
+    expect(play([{ type: "heard", text: "stop" }], thinking()).commands).toEqual([]);
   });
 });

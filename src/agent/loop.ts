@@ -73,6 +73,7 @@ export async function runTurn(
   userText: string,
   history: Turn[],
   cb: TurnCallbacks = {},
+  signal?: AbortSignal,
 ): Promise<TurnOutcome> {
   const provider = activeLLM();
   const { settings } = useProviders.getState();
@@ -85,6 +86,7 @@ export async function runTurn(
     const reply = await provider.send({
       apiKey,
       model: settings.llmModel,
+      signal,
       // Rebuilt each step so the model sees the board it just changed.
       system: systemPrompt(),
       messages,
@@ -101,6 +103,9 @@ export async function runTurn(
 
     const results = [];
     for (const call of reply.toolCalls) {
+      // Between tools as well as between steps: a turn that has been abandoned
+      // must not go on writing to the board behind the user.
+      if (signal?.aborted) return { reply: "", actions };
       const result = await runTool(call);
       results.push(result);
       if (!result.isError) {
