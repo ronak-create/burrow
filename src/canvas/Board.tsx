@@ -99,11 +99,19 @@ export default function Board() {
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.code === "Space") setSpaceActive(false);
     };
+    // A keyup that happens in another window never arrives here, so alt-tabbing
+    // with Space held used to leave the canvas permanently in pan mode: the hand
+    // cursor stayed, and selection, dragging and connecting were all still
+    // switched off with nothing on screen explaining why. Losing focus ends the
+    // hold, because a key held in a window you are no longer in is not held.
+    const onBlur = () => setSpaceActive(false);
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
     };
   }, []);
 
