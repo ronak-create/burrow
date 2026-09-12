@@ -12,6 +12,7 @@ import { emptyBoard } from "./canvas/types";
 import { coerceBoard, countDropped } from "./canvas/coerce";
 import { seedGettingStarted } from "./workspace/gettingStarted";
 import { Toasts } from "./ui/toast";
+import MenuBar from "./ui/MenuBar";
 import { toastWarn } from "./ui/toastStore";
 
 /**
@@ -65,41 +66,40 @@ export default function App() {
     load(emptyBoard());
   }
 
-  if (error) {
-    return (
-      <div style={{ padding: 40, maxWidth: 640, margin: "0 auto" }}>
-        <h2 style={{ fontSize: 17 }}>Could not start</h2>
-        <pre
-          className="selectable"
-          style={{
-            color: "var(--danger)",
-            fontSize: 13,
-            fontFamily: "var(--font-mono)",
-            whiteSpace: "pre-wrap",
-          }}
-        >
-          {error}
-        </pre>
-      </div>
-    );
-  }
-
-  if (!root) {
-    return (
-      <div style={{ display: "grid", placeItems: "center", height: "100%", color: "var(--text-faint)" }}>
-        Loading…
-      </div>
-    );
-  }
+  // Every state renders inside the same shell rather than returning early. The
+  // OS title bar is switched off, so the menu bar is the only way to move or
+  // close the window — and a screen that returned before it would leave a
+  // startup failure stranded in a window with no way out but Alt+F4.
+  const body = error ? (
+    <div style={{ padding: 40, maxWidth: 640, margin: "0 auto" }}>
+      <h2 style={{ fontSize: 17 }}>Could not start</h2>
+      <pre
+        className="selectable"
+        style={{
+          color: "var(--danger)",
+          fontSize: 13,
+          fontFamily: "var(--font-mono)",
+          whiteSpace: "pre-wrap",
+        }}
+      >
+        {error}
+      </pre>
+    </div>
+  ) : !root ? (
+    <div style={{ display: "grid", placeItems: "center", height: "100%", color: "var(--text-faint)" }}>
+      Loading…
+    </div>
+  ) : open ? (
+    <CanvasScreen ws={open} root={root} onBack={closeWorkspace} />
+  ) : (
+    <WorkspaceBrowser root={root} onOpen={openWorkspace} />
+  );
 
   return (
-    <>
-      {open ? (
-        <CanvasScreen ws={open} root={root} onBack={closeWorkspace} />
-      ) : (
-        <WorkspaceBrowser root={root} onOpen={openWorkspace} />
-      )}
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <MenuBar />
+      <div style={{ flex: 1, minHeight: 0, position: "relative" }}>{body}</div>
       <Toasts />
-    </>
+    </div>
   );
 }

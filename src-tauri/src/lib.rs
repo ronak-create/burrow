@@ -31,6 +31,8 @@ pub fn run() {
             workspace::append_transcript,
             workspace::read_transcript,
             workspace::delete_workspace,
+            workspace::export_workspace,
+            workspace::import_workspace,
             workspace::search_workspaces,
             documents::import_document,
             documents::import_image,

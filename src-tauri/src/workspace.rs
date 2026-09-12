@@ -255,6 +255,108 @@ pub fn delete_workspace(root: String, id: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Recursive copy, used by both halves of project export/import. std only — a
+/// workspace is a shallow folder of JSON and the user's own files, not a tree
+/// worth taking a dependency for.
+fn copy_dir(from: &Path, to: &Path) -> Result<(), String> {
+    fs::create_dir_all(to).map_err(|e| format!("create {}: {e}", to.display()))?;
+    for entry in fs::read_dir(from).map_err(|e| format!("read {}: {e}", from.display()))? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let src = entry.path();
+        let dst = to.join(entry.file_name());
+        if src.is_dir() {
+            copy_dir(&src, &dst)?;
+        } else {
+            fs::copy(&src, &dst).map_err(|e| format!("copy {}: {e}", src.display()))?;
+        }
+    }
+    Ok(())
+}
+
+/// Copy a workspace out to a folder the user picked.
+///
+/// What lands there is the same directory Burrow already keeps on disk, so an
+/// export is something you can open, read and back up with ordinary tools —
+/// board, documents, images and transcript — rather than an archive format only
+/// this app understands. That is also why there is no bundling step: the folder
+/// *is* the format.
+#[tauri::command]
+pub fn export_workspace(root: String, id: String, dest_dir: String) -> Result<String, String> {
+    let src = ws_dir(&root, &id);
+    if !src.join("workspace.json").exists() {
+        return Err(format!("{} is not a workspace", src.display()));
+    }
+    let meta: WorkspaceMeta = serde_json::from_value(read_json(&src.join("workspace.json"))?)
+        .map_err(|e| e.to_string())?;
+
+    // Never write over whatever is already sitting in the chosen folder.
+    let base = slugify(&meta.name);
+    let mut out = Path::new(&dest_dir).join(&base);
+    let mut n = 2;
+    while out.exists() {
+        out = Path::new(&dest_dir).join(format!("{base}-{n}"));
+        n += 1;
+    }
+    copy_dir(&src, &out)?;
+    Ok(out.display().to_string())
+}
+
+/// Adopt an exported folder as a new workspace.
+///
+/// It gets a fresh id and a fresh last-opened time, so importing the same
+/// project twice gives two independent copies instead of one silently
+/// overwriting the other. The name inside `workspace.json` is kept, because that
+/// is what the person who exported it called the thing.
+#[tauri::command]
+pub fn import_workspace(root: String, source_dir: String) -> Result<WorkspaceMeta, String> {
+    let src = Path::new(&source_dir);
+    let meta_path = src.join("workspace.json");
+    if !meta_path.exists() {
+        return Err(format!(
+            "{} does not look like a Burrow project - there is no workspace.json inside it",
+            src.display()
+        ));
+    }
+    let mut meta: WorkspaceMeta =
+        serde_json::from_value(read_json(&meta_path)?).map_err(|e| e.to_string())?;
+
+    let base = slugify(&meta.name);
+    let mut id = base.clone();
+    let mut n = 2;
+    while ws_dir(&root, &id).exists() {
+        id = format!("{base}-{n}");
+        n += 1;
+    }
+    let dir = ws_dir(&root, &id);
+    copy_dir(src, &dir)?;
+
+    // Keep the exporter's name when it is free, but follow the folder when it is
+    // not. Importing a project you already have is the normal case — a restore,
+    // a copy from another machine — and leaving both called the same thing puts
+    // two identical cards in the list with no way to tell which is which. The
+    // suffix matches the one the folder just took, so "Getting Started (2)" is
+    // always getting-started-2 on disk.
+    if n > 2 {
+        meta.name = format!("{} ({})", meta.name, n - 1);
+    }
+    meta.id = id;
+    meta.last_opened_at = now();
+    // Pinning says where something sits in *your* list, not what the project is,
+    // so it does not travel with the folder. An import arriving pre-pinned to the
+    // top of someone else's list is the exporter making a decision that was never
+    // theirs to make.
+    meta.pinned = false;
+    // A folder hand-copied from an older install may be missing either of these,
+    // and the rest of the app assumes both exist.
+    fs::create_dir_all(dir.join("documents")).map_err(|e| e.to_string())?;
+    fs::create_dir_all(dir.join("images")).map_err(|e| e.to_string())?;
+    write_json_atomic(
+        &dir.join("workspace.json"),
+        &serde_json::to_value(&meta).map_err(|e| e.to_string())?,
+    )?;
+    Ok(meta)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -264,6 +366,95 @@ mod tests {
         assert_eq!(slugify("Redis Deep Dive"), "redis-deep-dive");
         assert_eq!(slugify("  C++  //  Notes "), "c-notes");
         assert_eq!(slugify("!!!"), "workspace");
+    }
+
+    /// A throwaway directory. Nanoseconds rather than a counter because tests
+    /// run in parallel threads and two of these can be created in the same
+    /// millisecond.
+    fn temp_dir(tag: &str) -> PathBuf {
+        let p = std::env::temp_dir().join(format!(
+            "burrow-test-{tag}-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&p).unwrap();
+        p
+    }
+
+    #[test]
+    fn export_then_import_round_trips_the_whole_folder() {
+        let root = temp_dir("root");
+        let out = temp_dir("out");
+        let r = root.display().to_string();
+
+        // Pinned on purpose: it must not survive the trip.
+        let ws = create_workspace(r.clone(), "Redis Deep Dive".into(), vec![], true).unwrap();
+        write_board(
+            r.clone(),
+            ws.id.clone(),
+            serde_json::json!({ "nodes": [{ "id": "n1" }] }),
+        )
+        .unwrap();
+        fs::write(ws_dir(&r, &ws.id).join("documents").join("paper.txt"), "hello").unwrap();
+
+        let dest = export_workspace(r.clone(), ws.id.clone(), out.display().to_string()).unwrap();
+
+        // The export has to stand on its own, uploads included — a copy that
+        // quietly left the documents behind would look identical in the list.
+        assert!(Path::new(&dest).join("workspace.json").exists());
+        assert_eq!(
+            fs::read_to_string(Path::new(&dest).join("documents").join("paper.txt")).unwrap(),
+            "hello"
+        );
+
+        let imported = import_workspace(r.clone(), dest).unwrap();
+        assert_ne!(imported.id, ws.id, "an import must never land on the original");
+        assert!(
+            !imported.pinned,
+            "pinning belongs to the list you import into, not to the folder"
+        );
+        let board = read_board(r.clone(), imported.id).unwrap();
+        assert_eq!(board["nodes"][0]["id"], "n1");
+
+        fs::remove_dir_all(&root).ok();
+        fs::remove_dir_all(&out).ok();
+    }
+
+    #[test]
+    fn importing_a_name_already_taken_disambiguates_id_and_name_together() {
+        let root = temp_dir("dup");
+        let out = temp_dir("dupout");
+        let r = root.display().to_string();
+
+        let ws = create_workspace(r.clone(), "Getting Started".into(), vec![], false).unwrap();
+        let dest = export_workspace(r.clone(), ws.id.clone(), out.display().to_string()).unwrap();
+
+        // Two cards reading "Getting Started, 13 blocks" with nothing to tell
+        // them apart is the bug this guards against.
+        let first = import_workspace(r.clone(), dest.clone()).unwrap();
+        assert_eq!(first.id, "getting-started-2");
+        assert_eq!(first.name, "Getting Started (2)");
+
+        let second = import_workspace(r.clone(), dest).unwrap();
+        assert_eq!(second.id, "getting-started-3");
+        assert_eq!(second.name, "Getting Started (3)");
+
+        fs::remove_dir_all(&root).ok();
+        fs::remove_dir_all(&out).ok();
+    }
+
+    #[test]
+    fn importing_something_that_is_not_a_project_says_so() {
+        let root = temp_dir("bad");
+        let src = temp_dir("notaproject");
+        let err =
+            import_workspace(root.display().to_string(), src.display().to_string()).unwrap_err();
+        assert!(err.contains("workspace.json"), "unhelpful error: {err}");
+
+        fs::remove_dir_all(&root).ok();
+        fs::remove_dir_all(&src).ok();
     }
 }
 

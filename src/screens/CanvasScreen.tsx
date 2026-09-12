@@ -13,8 +13,10 @@ import { useAutosave, saveNow } from "../workspace/persist";
 import { useCurrentWorkspace } from "../workspace/current";
 import DocumentViewer from "./DocumentViewer";
 import DocumentsPanel from "./DocumentsPanel";
-import { toastError } from "../ui/toastStore";
-import { updateWorkspaceMeta, type WorkspaceMeta } from "../workspace/api";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { toastError, toastInfo } from "../ui/toastStore";
+import { exportWorkspace, updateWorkspaceMeta, type WorkspaceMeta } from "../workspace/api";
+import { useMenu } from "../ui/menuStore";
 
 /** Which shape variant the toolbar's shape buttons create. */
 type ToolSpec = { kind: BlockKind; label: string; icon: IconName; variant?: "rectangle" | "ellipse" };
@@ -41,6 +43,9 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
   const undo = useBoard((s) => s.undo);
   const redo = useBoard((s) => s.redo);
   const past = useBoard((s) => s.past.length);
+  // Only the menu offers Redo as a visible item, so until now nothing needed to
+  // know whether there was anything to redo.
+  const future = useBoard((s) => s.future.length);
   const { zoomIn, zoomOut, fitView, getZoom } = useReactFlow();
   const [showSettings, setShowSettings] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
@@ -168,6 +173,49 @@ function CanvasInner({ ws, root, onBack }: { ws: WorkspaceMeta; root: string; on
     }
     onBack();
   };
+
+  // Export writes the folder as it currently stands on disk, so the unsaved tail
+  // of this session has to be flushed first or the copy silently lags the board
+  // on screen. Same reasoning as saving on the way out.
+  const exportProject = async () => {
+    try {
+      const dir = await openDialog({ directory: true, title: "Export project to…" });
+      if (typeof dir !== "string") return;
+      await saveNow(root, ws.id);
+      const dest = await exportWorkspace(root, ws.id, dir);
+      toastInfo(`Exported to ${dest}`);
+    } catch (e) {
+      toastError(e);
+    }
+  };
+
+  // Lend the menu bar the actions that exist only while a board is open, and
+  // take them back on unmount so Edit and View grey out on the workspace list
+  // rather than calling into a screen that is gone. Closing this way goes
+  // through `back`, not `onBack`, so the menu saves on the way out exactly as
+  // the back button does.
+  const setCanvasMenu = useMenu((s) => s.setCanvas);
+  useEffect(() => {
+    setCanvasMenu({
+      undo,
+      redo,
+      canUndo: past > 0,
+      canRedo: future > 0,
+      zoomIn: () => zoomIn(),
+      zoomOut: () => zoomOut(),
+      fitView: () => fitView({ padding: 0.2 }),
+      openFiles: () => setShowDocs(true),
+      openSettings: () => setShowSettings(true),
+      toggleAssistant: () => setShowPanel((v) => !v),
+      assistantVisible: showPanel,
+      closeWorkspace: () => void back(),
+      exportProject: () => void exportProject(),
+    });
+    return () => setCanvasMenu(null);
+    // `back` is deliberately not a dependency: it is rebuilt every render and
+    // only closes over root/ws.id/onBack, none of which change while open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [undo, redo, past, future, zoomIn, zoomOut, fitView, showPanel, setCanvasMenu]);
 
   const iconBtn = {
     width: 28,

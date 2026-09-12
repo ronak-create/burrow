@@ -59,3 +59,8 @@ export function toastError(e: unknown): void {
 export function toastWarn(text: string): void {
   useToasts.getState().push("warn", text);
 }
+
+/** Confirmation of something the user asked for and cannot otherwise see. */
+export function toastInfo(text: string): void {
+  useToasts.getState().push("info", text);
+}

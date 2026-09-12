@@ -69,6 +69,18 @@ export const readTranscript = (root: string, id: string) =>
 export const deleteWorkspace = (root: string, id: string) =>
   invoke<void>("delete_workspace", { root, id });
 
+/**
+ * Project export/import. Both move the workspace folder as it stands on disk —
+ * board, documents, images and transcript — so an export stays readable with
+ * ordinary tools and an import is just the reverse. Returns the path written to
+ * and the adopted workspace respectively.
+ */
+export const exportWorkspace = (root: string, id: string, destDir: string) =>
+  invoke<string>("export_workspace", { root, id, destDir });
+
+export const importWorkspace = (root: string, sourceDir: string) =>
+  invoke<WorkspaceMeta>("import_workspace", { root, sourceDir });
+
 /* ---------- BYOK keys (OS keychain) ---------- */
 
 export const setApiKey = (provider: string, key: string) =>

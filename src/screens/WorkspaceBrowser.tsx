@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 import {
   createWorkspace,
   deleteWorkspace,
   listWorkspaces,
   searchWorkspaces,
+  importWorkspace,
   updateWorkspaceMeta,
   type SearchHit,
   type WorkspaceMeta,
 } from "../workspace/api";
 import { BurrowMark, Icon } from "../ui/icons";
 import Settings from "./Settings";
-import { toastError } from "../ui/toastStore";
+import { toastError, toastInfo } from "../ui/toastStore";
 import { GETTING_STARTED_NAME } from "../workspace/gettingStarted";
+import { useMenu } from "../ui/menuStore";
 
 /**
  * The first screen: a flat list of workspaces sorted by last opened, filterable by
@@ -35,6 +38,37 @@ export default function WorkspaceBrowser({
   const [confirming, setConfirming] = useState<WorkspaceMeta | null>(null);
   const [renaming, setRenaming] = useState<WorkspaceMeta | null>(null);
   const [renameTo, setRenameTo] = useState("");
+
+  // What the menu bar can reach on this screen. Registered and withdrawn the
+  // same way CanvasScreen does it, so File shows New workspace here and Close
+  // workspace only once a board is open.
+  const setBrowserMenu = useMenu((s) => s.setBrowser);
+  useEffect(() => {
+    setBrowserMenu({
+      newWorkspace: () => setCreating(true),
+      openSettings: () => setShowSettings(true),
+      importProject: () => void importProject(),
+    });
+    return () => setBrowserMenu(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setBrowserMenu]);
+
+  /**
+   * Adopt a folder as a new workspace. Deliberately does not open it: an import
+   * can be a restore of something large, and dropping straight into a board
+   * hides whether the thing that arrived is the thing you meant.
+   */
+  async function importProject() {
+    try {
+      const dir = await open({ directory: true, title: "Import a Burrow project" });
+      if (typeof dir !== "string") return;
+      const ws = await importWorkspace(root, dir);
+      await refresh();
+      toastInfo(`Imported "${ws.name}"`);
+    } catch (e) {
+      toastError(e);
+    }
+  }
 
   /**
    * Content search across every workspace (spec C), not just a name filter.
