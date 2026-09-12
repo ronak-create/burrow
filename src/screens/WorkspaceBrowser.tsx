@@ -617,8 +617,15 @@ export default function WorkspaceBrowser({
                   borderRadius: "var(--r-sm)",
                   fontSize: 14,
                   fontWeight: 500,
-                  background: "var(--danger)",
-                  color: "var(--on-accent)",
+                  // Not a filled surface. In a monochrome palette --danger and
+                  // --accent are the same near-white, so a filled Delete came out
+                  // looking exactly like the app's primary button — the loudest,
+                  // most inviting thing in a dialog whose whole job is to give
+                  // you pause. Outlined reads as deliberate without courting the
+                  // click.
+                  background: "var(--danger-wash)",
+                  border: "1px solid var(--danger-line)",
+                  color: "var(--text)",
                 }}
               >
                 Delete

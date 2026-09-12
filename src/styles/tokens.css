@@ -51,7 +51,15 @@
   --on-accent: #000000;
 
   /* Status carries no hue in a monochrome palette, so it separates by brightness:
-     danger reads as the loudest neutral, warn as a solid white chip. */
+     danger reads as the loudest neutral, warn as a solid white chip.
+
+     Which means --danger only says "danger" at small size. Fill an area bigger
+     than a chip with it and it stops being a signal: it is the same near-white
+     as --accent here, and literally the same #0d0d0d in the light theme, so a
+     destructive button comes out identical to the primary one. Use it as a mark
+     — a dot, a rule, a 20px badge, an icon. For anything button-sized use the
+     --danger-wash / --danger-line pair below, which reads as deliberate without
+     competing with the primary action. */
   --danger: #ffffff;
   --ok: #b8b8b8;
   --warn: #ffffff;

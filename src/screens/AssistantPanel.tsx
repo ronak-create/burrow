@@ -381,13 +381,32 @@ export default function AssistantPanel({ root, wsId }: { root: string; wsId: str
             borderRadius: "var(--r-md)",
             fontWeight: 500,
             fontSize: 14,
-            // White only over a filled accent/danger background. When the button is
-            // disabled its background is a pale surface, where white is invisible in
-            // the light theme.
-            color: micReady && !busy ? "var(--on-accent)" : "var(--text-muted)",
+            // Listening used to be a filled --danger against a filled --accent,
+            // which is no state change at all: the two tokens are the same
+            // #0d0d0d in the light theme and #f2f2f2 vs #ffffff in the dark one.
+            // The button you are holding down to record gave back nothing. Going
+            // from filled to outlined is a difference you can see in both themes.
+            //
+            // White text only over the filled state; over the wash, or over the
+            // pale disabled surface, it would vanish in the light theme.
+            color:
+              status === "listening"
+                ? "var(--text)"
+                : micReady && !busy
+                  ? "var(--on-accent)"
+                  : "var(--text-muted)",
             background:
-              status === "listening" ? "var(--danger)" : micReady && !busy ? "var(--accent)" : "var(--surface-2)",
-            border: micReady && !busy ? "none" : "1px solid var(--border)",
+              status === "listening"
+                ? "var(--danger-wash)"
+                : micReady && !busy
+                  ? "var(--accent)"
+                  : "var(--surface-2)",
+            border:
+              status === "listening"
+                ? "1px solid var(--danger-line)"
+                : micReady && !busy
+                  ? "none"
+                  : "1px solid var(--border)",
             opacity: micReady && !busy ? 1 : 0.9,
             cursor: micReady && !busy ? "pointer" : "not-allowed",
             transition: "background 120ms ease",

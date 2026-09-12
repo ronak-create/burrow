@@ -91,15 +91,21 @@ export default function MicCheck() {
   return (
     <div style={{ display: "grid", gap: 10 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Stopping a test is not destructive, so this gets the wash-and-outline
+            treatment every other toggle uses, not a filled surface. A filled
+            --danger is pure white in the dark palette, which put a glaring slab
+            next to a meter the eye is supposed to be reading. The 2px threshold
+            line below is still solid --danger — loudest neutral is right for a
+            line, wrong for a button-sized area. */}
         <button
           onClick={() => (running ? stop() : void start())}
           style={{
             padding: "6px 12px",
             borderRadius: "var(--r-sm)",
             fontSize: 13,
-            border: "1px solid var(--border)",
-            background: running ? "var(--danger)" : "transparent",
-            color: running ? "var(--on-accent)" : "var(--text)",
+            border: `1px solid ${running ? "var(--danger-line)" : "var(--border)"}`,
+            background: running ? "var(--danger-wash)" : "transparent",
+            color: "var(--text)",
             whiteSpace: "nowrap",
           }}
         >
