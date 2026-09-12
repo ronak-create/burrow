@@ -5,9 +5,11 @@ import { activeSTT, keyFor } from "../providers/registry";
  * Hold-to-talk capture and speech playback.
  *
  * Both halves depend on findings from the M1 spike:
- *   - getUserMedia works in WebView2 only because tauri.conf.json passes
- *     --use-fake-ui-for-media-stream, which auto-grants the permission prompt
- *     (it does not fake the device). Without it, getUserMedia hangs forever.
+ *   - getUserMedia once hung forever in WebView2 unless tauri.conf.json passed
+ *     --use-fake-ui-for-media-stream to auto-grant the permission prompt. That
+ *     no longer reproduces (runtime 152.0.4191.66) — the prompt appears and is
+ *     dismissable — so the flag was dropped rather than ship a build that grants
+ *     itself the microphone. See the 13 Sep 2026 correction in DESIGN.md.
  *   - speechSynthesis exposes no voices in WebView2, so speaking goes through the
  *     OS voices via Rust instead of the browser API.
  */

@@ -138,6 +138,17 @@ Run against Tauri v2 / WebView2 `Edg/151` on Windows 11. Every item below was te
 
 Despite the name, `--use-fake-ui-for-media-stream` fakes only the *permission prompt* (auto-granting it) — not the device. Confirmed by capturing 18–19 KB of real Opus audio from a real `Realtek(R) Audio` microphone array. The device-faking flag is the different `--use-fake-device-for-media-stream`. Note this auto-grants media permission app-wide, which is acceptable here because the app is the only thing loaded in the webview and it is the user's own machine — but it should not be carried into any build that loads third-party web content.
 
+**Correction, 13 Sep 2026: the flag is gone.** The hang no longer reproduces.
+With `--use-fake-ui-for-media-stream` removed, WebView2 shows an ordinary
+microphone permission prompt, it is dismissable in the frameless window, and
+`getUserMedia` resolves on Allow — tested by hand through Settings → Voice → Test
+microphone, on WebView2 runtime 152.0.4191.66. The M1 behaviour above was real
+when it was measured; something between that runtime and this one fixed it. The
+flag is dropped from `tauri.conf.json`, so no build grants itself the microphone
+and there is nothing for the README to disclose. If the hang returns on an older
+runtime the flag is the known remedy — but re-measure before re-adding it, the
+same rule the removed Ollama vision path earned.
+
 **Correction to Section D:** the Web Speech API cannot serve as the zero-key STT under Tauri. `SpeechRecognition` is a Chromium feature backed by Google's cloud service and is absent from WebView2/WKWebView. Speech *synthesis* is a separate API and was tested independently — it is present but exposes no voices, so it is unusable too. The zero-key path is therefore local Whisper (STT — built in M4, as a client to a server the user runs) plus the Rust `tts` crate (TTS, working now).
 
 ---
