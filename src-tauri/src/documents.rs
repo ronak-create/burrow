@@ -180,7 +180,7 @@ fn list_dir(root: &str, id: &str, sub: &str) -> Result<Vec<DocumentInfo>, String
             size_bytes: entry.metadata().map(|m| m.len()).unwrap_or(0),
         });
     }
-    out.sort_by(|a, b| a.file.to_lowercase().cmp(&b.file.to_lowercase()));
+    out.sort_by_key(|d| d.file.to_lowercase());
     Ok(out)
 }
 
