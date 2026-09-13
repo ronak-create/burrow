@@ -67,3 +67,6 @@
     });
   }
 })();
+
+// The overlay now fills `.deep`, which is aspect-locked in CSS, so nothing needs
+// to measure or resize it from script any more.

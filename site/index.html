@@ -15,7 +15,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;1,500&family=JetBrains+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/style.css">
   <style>:root { font-size: 17px; }</style>
   <noscript><style>.chamber { opacity: 1; transform: none; }</style></noscript>
@@ -26,250 +26,114 @@
     <a class="brand" href="#top">Burrow</a>
     <div class="nav-links">
       <a href="docs/">Docs</a>
-      <a href="https://github.com/ronak-create/burrow">Source</a>
-      <a class="btn btn--primary" href="#download">Download</a>
+      <a class="gh" href="https://github.com/ronak-create/burrow" aria-label="Burrow on GitHub">
+        <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+            0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01
+            1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95
+            0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09
+            2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87
+            3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16
+            8c0-4.42-3.58-8-8-8Z"/>
+        </svg>
+        <span>GitHub</span>
+      </a>
     </div>
   </nav>
 
-  <header class="hero" id="top">
-    <div class="hero-banner">
-      <img src="assets/banner.png" alt="Burrow. Dig until you hit the root of it." fetchpriority="high">
+  <!-- The page is locked to the artwork's aspect ratio, and every piece of copy
+       is positioned into a gap the artwork actually leaves empty. Those gaps were
+       measured off the image rather than guessed, which is why the numbers are
+       odd. The art is never dimmed or masked; where the two competed, the words
+       gave way. -->
+  <main class="deep" id="top">
+
+    <!-- Narrow screens only. The full canvas has no readable gap at phone width,
+         so the art retreats to the two edges and the copy takes the middle. -->
+    <div class="edge-art" aria-hidden="true">
+      <picture>
+        <source srcset="assets/roots-gutter-left.webp" type="image/webp">
+        <img class="l" src="assets/roots-gutter-left.png" alt="" decoding="async">
+      </picture>
+      <picture>
+        <source srcset="assets/roots-gutter-right.webp" type="image/webp">
+        <img class="r" src="assets/roots-gutter-right.png" alt="" decoding="async">
+      </picture>
     </div>
-    <div class="hero-copy">
+
+    <div class="root-overlay" aria-hidden="true">
+      <picture>
+        <source srcset="assets/roots-chamber@2x.webp" type="image/webp">
+        <img src="assets/roots-chamber.png" alt="" fetchpriority="high" decoding="async">
+      </picture>
+    </div>
+
+    <div class="pocket pocket--mark" style="--l:32;--t:1.4;--w:34">
       <h1 class="visually-hidden">Burrow</h1>
-      <p>
-        A voice-driven research assistant that keeps a canvas of notes,
-        documents, and diagrams on the machine it runs on, and nowhere else
-        unless asked.
-      </p>
-      <div class="hero-actions">
-        <a class="btn btn--primary" href="#download">Download for Windows</a>
-        <span class="quiet">v0.2.0 &middot; 5.5 MB &middot; MIT</span>
-      </div>
+      <picture>
+        <source srcset="assets/wordmark.webp" type="image/webp">
+        <img src="assets/wordmark.png" alt="Burrow. Dig until you hit the root of it.">
+      </picture>
     </div>
-  </header>
 
-  <div class="strata" aria-hidden="true"></div>
-
-  <section class="block">
-    <div class="wrap">
-      <div class="block-head chamber">
-        <p class="eyebrow">First chamber</p>
-        <h2>One canvas, fully wired.</h2>
-        <p>Six things it does out of the box, running on one infinite board.</p>
-      </div>
-
-      <div class="bento chamber">
-        <div class="cell cell--lg">
-          <svg class="cell-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true">
-            <path d="M9 7c0-3.5 6-3.5 6 0"/>
-            <path d="M8.4 9 9.6 7h4.8L15.6 9Z"/>
-            <path d="M8.4 9h7.2l-.5 9H8.9Z"/>
-            <path d="M7.6 18h8.8v2.5H7.6Z"/>
-            <path d="M12 11.6c1.4 1.5 1.7 2.6.9 3.5a1.2 1.2 0 0 1-1.8 0c-.8-.9-.5-2 .9-3.5Z" fill="currentColor" stroke="none"/>
-          </svg>
-          <h3>The assistant</h3>
-          <p>
-            Fifteen tools let it write blocks, connect them, frame them, and
-            flag what it is unsure about. It reads documents, reads
-            handwriting, and searches papers and the open web on request.
-          </p>
-
-          <svg class="cell-board" viewBox="0 0 640 190" fill="none" aria-hidden="true">
-            <g stroke-width="1" stroke-linecap="round">
-              <path class="ground" d="M0 120c120-8 200 6 320 0s200 8 320 0"/>
-              <path class="ground" d="M0 142c140-6 220 6 340 0s140 8 300 2" opacity=".6"/>
-              <path class="ground" d="M0 164c160-6 240 6 360 0s120 8 280 2" opacity=".35"/>
-            </g>
-
-            <g class="root" stroke-width="1.1" stroke-linecap="round">
-              <path d="M320 190c0-30-20-40-20-58"/>
-              <path d="M300 132c-40-6-120-12-204-42"/>
-              <path d="M304 130c-14-14-36-30-60-50"/>
-              <path d="M330 130c20-10 40-26 58-40"/>
-              <path d="M336 132c64-8 134-22 184-52"/>
-            </g>
-
-            <g class="thread" stroke-width="1" fill="none">
-              <path d="M96 36c44 34 104 20 148-14"/>
-              <path d="M244 22c56 36 96 48 144 18"/>
-              <path d="M388 40c52 32 92 18 132-16"/>
-            </g>
-
-            <g transform="rotate(-4 96 62)">
-              <rect class="card" x="60" y="36" width="72" height="52" rx="2" stroke-width="1"/>
-              <g class="line" stroke-width="1" stroke-linecap="round">
-                <path d="M68 54h56M68 64h46M68 74h38"/>
-              </g>
-            </g>
-            <g transform="rotate(3 244 51)">
-              <rect class="card" x="200" y="22" width="88" height="58" rx="2" stroke-width="1"/>
-              <g class="line" stroke-width="1" stroke-linecap="round">
-                <path d="M210 42h68M210 54h56M210 66h48"/>
-              </g>
-            </g>
-            <g transform="rotate(-2 388 65)">
-              <rect class="card" x="350" y="40" width="76" height="50" rx="2" stroke-width="1"/>
-              <g class="line" stroke-width="1" stroke-linecap="round">
-                <path d="M358 58h60M358 68h44M358 78h52"/>
-              </g>
-            </g>
-            <g transform="rotate(5 520 52)">
-              <rect class="card" x="478" y="24" width="84" height="56" rx="2" stroke-width="1"/>
-              <g class="line" stroke-width="1" stroke-linecap="round">
-                <path d="M487 43h66M487 55h50M487 67h58"/>
-              </g>
-            </g>
-
-            <g class="pin">
-              <circle cx="96" cy="36" r="3"/>
-              <circle cx="244" cy="22" r="3"/>
-              <circle cx="388" cy="40" r="3"/>
-              <circle cx="520" cy="24" r="3"/>
-            </g>
-          </svg>
-        </div>
-
-        <div class="cell">
-          <svg class="cell-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-            <rect x="3" y="3" width="18" height="18" rx="2"/>
-            <path d="M3 9h18M9 21V9"/>
-          </svg>
-          <h3>The board</h3>
-          <p>
-            Notes, tables, diagrams, and images drawn where a hand puts
-            them, not dropped at the center. Ink and undo are shared with
-            the assistant.
-          </p>
-        </div>
-
-        <div class="cell cell--wave">
-          <div>
-            <svg class="cell-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <rect x="9" y="3" width="6" height="11" rx="3"/>
-              <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>
-            </svg>
-            <h3>The wake word</h3>
-            <p>Saying "Hey Burrow" opens a microphone that stayed closed until asked.</p>
-          </div>
-          <svg class="wave" viewBox="0 0 120 32" fill="none" aria-hidden="true">
-            <g stroke="currentColor" stroke-width="3" stroke-linecap="round">
-              <path d="M4 16V12"/><path d="M14 16V8"/><path d="M24 16V4"/><path d="M34 16V10"/>
-              <path d="M44 16V18"/><path d="M54 16V6"/><path d="M64 16V14"/><path d="M74 16V4"/>
-              <path d="M84 16V10"/><path d="M94 16V18"/><path d="M104 16V8"/><path d="M114 16V12"/>
-            </g>
-          </svg>
-        </div>
-
-        <div class="cell">
-          <svg class="cell-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-            <path d="M7 3h7l4 4v14H7z"/>
-            <path d="M14 3v4h4M9 13h6M9 17h6"/>
-          </svg>
-          <h3>What gets read</h3>
-          <p>PDF, Word, Markdown, and plain text import, get read in-app, and get excerpted onto the board.</p>
-        </div>
-
-        <div class="cell cell--dotted">
-          <svg class="cell-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-            <circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/>
-            <path d="M7.7 7.3L11 16M16.3 7.3L13 16M8.2 6h7.6"/>
-          </svg>
-          <h3>Any endpoint that speaks the API</h3>
-          <p>OpenAI, Groq, Cerebras, or a custom URL, for language and for speech.</p>
-        </div>
-
-        <div class="cell">
-          <svg class="cell-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-            <path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6z"/>
-          </svg>
-          <h3>Nothing leaves uninvited</h3>
-          <p>Boards, documents, and transcripts sit as plain files on disk. Keys live in the OS keychain, or don't exist.</p>
-        </div>
-      </div>
+    <div class="pocket chamber" style="--l:41;--t:17.5;--w:18">
+      <p class="lede">A research assistant that keeps your notes, documents and
+        diagrams on the machine it runs on.</p>
     </div>
-  </section>
 
-  <section class="trust">
-    <div class="wrap chamber">
-      <div>
-        <p class="eyebrow">Second chamber</p>
-        <h2>Runs closed unless it's told to open.</h2>
-        <p>
-          No account, no telemetry, and no call leaving the machine when the
-          model in Settings is a local one. Ollama or any OpenAI-compatible
-          server works the same way a hosted provider would.
-        </p>
-      </div>
-      <div class="snippet">
-        <div><span class="k">provider</span>: <span class="v">ollama</span></div>
-        <div><span class="k">endpoint</span>: <span class="v">http://127.0.0.1:11434/v1</span></div>
-        <div><span class="k">api_key</span>: <span class="v v--none">none</span></div>
-      </div>
+    <div class="pocket chamber pocket--cta" style="--l:52;--t:23.5;--w:17">
+      <a class="btn btn--primary" href="#download">Download</a>
+      <p class="meta">v0.2.0 &middot; MIT</p>
     </div>
-  </section>
 
-  <div class="strata" aria-hidden="true"></div>
-
-  <section class="block download-section" id="download">
-    <div class="wrap">
-      <div class="block-head chamber">
-        <p class="eyebrow">The way in</p>
-        <h2>Download</h2>
-        <p>MIT licensed, built on Tauri and React Flow.</p>
-      </div>
-
-      <div class="downloads chamber">
-        <div class="download-card is-recommended">
-          <span class="tag">Recommended</span>
-          <div class="platform">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <rect x="3" y="4" width="18" height="12" rx="1.5"/>
-              <path d="M8 20h8M12 16v4"/>
-            </svg>
-            <h3>Windows Installer</h3>
-          </div>
-          <span class="filetype">.exe &middot; 5.5 MB</span>
-          <p>Runs the setup wizard and installs Burrow 0.2.0 for the current user.</p>
-          <a class="btn btn--primary" href="https://github.com/ronak-create/burrow/releases/download/v0.2.0/Burrow_0.2.0_x64-setup.exe">Download .exe</a>
-        </div>
-
-        <div class="download-card">
-          <div class="platform">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <rect x="3" y="4" width="18" height="12" rx="1.5"/>
-              <path d="M8 20h8M12 16v4"/>
-            </svg>
-            <h3>Windows (MSI)</h3>
-          </div>
-          <span class="filetype">.msi &middot; 7.4 MB</span>
-          <p>A package install, better suited to managed machines and silent deploys.</p>
-          <a class="btn" href="https://github.com/ronak-create/burrow/releases/download/v0.2.0/Burrow_0.2.0_x64_en-US.msi">Download .msi</a>
-        </div>
-
-        <div class="download-card">
-          <div class="platform">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <rect x="3" y="4" width="18" height="16" rx="2"/>
-              <path d="M7 9l3 3-3 3M13 15h4"/>
-            </svg>
-            <h3>macOS &amp; Linux</h3>
-          </div>
-          <span class="filetype">build from source</span>
-          <p>No packaged build yet. Clone the repository and run it with Tauri directly.</p>
-          <a class="btn" href="docs/getting-started/">Read the guide</a>
-        </div>
-      </div>
-
-      <p class="download-note">v0.2.0, pre-release.</p>
+    <div class="pocket chamber" style="--l:29.1;--t:29.5;--w:11.8">
+      <h2>Fifteen tools</h2>
+      <p>It writes blocks, connects them, and flags what it is unsure of.</p>
     </div>
-  </section>
 
-  <footer class="site-footer">
-    <div class="wrap">
-      <span class="brand">Dig until you hit the root of it.</span>
+    <div class="pocket chamber" style="--l:43.6;--t:33.5;--w:9.1">
+      <h2>One board</h2>
+      <p>Notes, tables, diagrams, ink. Undo is shared.</p>
     </div>
-  </footer>
+
+    <div class="pocket chamber" style="--l:48.2;--t:39.5;--w:28.2">
+      <h2>It wakes to its name</h2>
+      <p>Say &ldquo;Hey Burrow&rdquo;. The microphone stayed closed until you asked it.</p>
+    </div>
+
+    <div class="pocket chamber" style="--l:28.5;--t:43.5;--w:14">
+      <h2>It reads<br>what you<br>give it</h2>
+    </div>
+
+    <!-- Deliberately not under its heading: it sits in the gap below and to the
+         left, where the artwork actually leaves room. -->
+    <div class="pocket chamber" style="--l:25;--t:47.5;--w:12">
+      <p>PDF, Word,<br>Markdown,<br>plain text.</p>
+    </div>
+
+    <div class="pocket chamber" style="--l:36.7;--t:54;--w:30">
+      <h2>Any endpoint that speaks the API</h2>
+      <p>OpenAI, Groq, Cerebras, or your own URL &mdash; for language and for speech.
+        Point it at Ollama and it needs no key at all.</p>
+      <h2 class="spaced">Nothing leaves uninvited</h2>
+      <p>Boards, documents and transcripts are plain files on your disk. Keys live
+        in the OS keychain, or don&rsquo;t exist.</p>
+    </div>
+
+    <div class="pocket chamber" id="download" style="--l:41.8;--t:77;--w:22.7">
+      <h2>Download</h2>
+      <ul class="dl">
+        <li><a href="https://github.com/ronak-create/burrow/releases/latest">Windows</a> <span>.exe &middot; 5.8&nbsp;MB</span></li>
+        <li><a href="https://github.com/ronak-create/burrow/releases/latest">Windows</a> <span>.msi &middot; 7.7&nbsp;MB</span></li>
+        <li><a href="https://github.com/ronak-create/burrow/releases/latest">macOS</a> <span>.dmg &middot; 15.5&nbsp;MB</span></li>
+        <li><a href="https://github.com/ronak-create/burrow/releases/latest">Linux</a> <span>.deb &middot; 9.7&nbsp;MB</span></li>
+      </ul>
+      <p class="meta">Unsigned. Every release publishes SHA&#8209;256 checksums.</p>
+    </div>
+
+    <p class="pocket tagline chamber" style="--l:32;--t:95.5;--w:50">Dig until you hit the root of it.</p>
+
+  </main>
 
   <script src="assets/reveal.js"></script>
   <script src="assets/interactions.js"></script>

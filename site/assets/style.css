@@ -148,13 +148,12 @@ a:hover { color: var(--ink); }
   gap: 1.5rem;
   height: 68px;
   padding: 0 1.5rem;
-  background: rgba(10, 7, 18, 0.78);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--panel-edge);
+  background: none;
+  border-bottom: 0;
 }
 
 .navbar .brand {
-  font-family: "Newsreader", ui-serif, Georgia, serif;
+  font-family: "Cormorant Garamond", ui-serif, Georgia, serif;
   font-style: italic;
   font-weight: 500;
   font-size: 1.2rem;
@@ -181,7 +180,9 @@ a:hover { color: var(--ink); }
 .navbar .btn { padding: 0.6rem 1.3rem; font-size: 0.88rem; }
 
 @media (max-width: 640px) {
-  .navbar .nav-links a:not(.btn) { display: none; }
+  /* This used to hide everything except the Download button, which was the only
+     thing meant to survive at phone width. The button is gone from the header
+     now, so hiding the rest left an empty bar. */
 }
 
 /* ---------- hero ---------- */
@@ -202,10 +203,14 @@ a:hover { color: var(--ink); }
   pointer-events: none;
 }
 
+/* Just the wordmark now. The banner's illustration used to carry the roots into
+   the page; the page carries them itself, so repeating the art at the top only
+   competed with it. What is left is the name, centred. */
 .hero-banner {
   position: relative;
-  max-width: 1400px;
+  max-width: 620px;
   margin: 0 auto;
+  padding: 2.5rem 1.5rem 0;
 }
 
 .hero-banner img {
@@ -214,22 +219,11 @@ a:hover { color: var(--ink); }
   display: block;
 }
 
-.hero-banner::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(to bottom, transparent 46%, var(--bg) 86%),
-    linear-gradient(to top, transparent 90%, var(--bg) 100%),
-    linear-gradient(to right, transparent 90%, var(--bg) 100%),
-    linear-gradient(to left, transparent 90%, var(--bg) 100%);
-}
-
 .hero-copy {
   position: relative;
   z-index: 2;
   max-width: 640px;
-  margin: -3.5rem auto 0;
+  margin: 1.75rem auto 0;
   padding: 0 1.5rem;
 }
 
@@ -342,7 +336,7 @@ section.block {
 }
 
 .block-head h2 {
-  font-family: "Newsreader", ui-serif, Georgia, serif;
+  font-family: "Cormorant Garamond", ui-serif, Georgia, serif;
   font-weight: 500;
   font-size: clamp(1.7rem, 3.4vw, 2.2rem);
   line-height: 1.18;
@@ -397,7 +391,7 @@ section.block {
 }
 
 .cell h3 {
-  font-family: "Newsreader", ui-serif, Georgia, serif;
+  font-family: "Cormorant Garamond", ui-serif, Georgia, serif;
   font-weight: 500;
   font-size: 1.2rem;
   line-height: 1.32;
@@ -497,7 +491,7 @@ section.block {
 }
 
 .trust h2 {
-  font-family: "Newsreader", ui-serif, Georgia, serif;
+  font-family: "Cormorant Garamond", ui-serif, Georgia, serif;
   font-weight: 500;
   font-size: clamp(1.7rem, 3.4vw, 2.2rem);
   line-height: 1.18;
@@ -611,7 +605,7 @@ section.block {
 }
 
 .site-footer .brand {
-  font-family: "Newsreader", ui-serif, Georgia, serif;
+  font-family: "Cormorant Garamond", ui-serif, Georgia, serif;
   font-style: italic;
   color: var(--ink-dim);
   font-size: 0.95rem;
@@ -657,4 +651,198 @@ section.block {
   .btn { transition: none; }
   .chamber { opacity: 1; transform: none; transition: none; }
   .lantern-glow { display: none; }
+}
+
+/* ---------- the descent ----------
+   The page is locked to the artwork's aspect ratio and every block of copy is
+   absolutely placed into a gap the artwork leaves empty. Those coordinates were
+   measured off the image, not designed: 36% of the canvas is genuinely empty,
+   and the copy was cut until it fitted that 36%. The art is never dimmed.
+
+   Below 1100px the artwork is dropped and everything falls back into ordinary
+   document flow, because at that width there is no gap wide enough to read in. */
+
+.deep {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1692 / 3085;
+  margin: 0 auto;
+}
+
+.root-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 50;            /* above the navbar: the roots pass in front of it */
+}
+
+.root-overlay img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+
+.pocket {
+  position: absolute;
+  left: calc(var(--l) * 1%);
+  top: calc(var(--t) * 1%);
+  width: calc(var(--w) * 1%);
+  z-index: 20;
+  margin: 0;
+  text-align: center;
+}
+
+.pocket--mark img { width: 100%; height: auto; display: block; }
+
+.pocket h2 {
+  font-family: "Cormorant Garamond", ui-serif, Georgia, serif;
+  font-size: clamp(1.4rem, 2.1vw, 2.3rem);
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  line-height: 1.15;
+  margin: 0 0 0.4em;
+  color: var(--ink);
+}
+
+.pocket h2.spaced { margin-top: 1.4em; }
+
+.pocket p {
+  font-size: clamp(0.88rem, 1.06vw, 1.18rem);
+  line-height: 1.5;
+  color: var(--ink-dim);
+  margin: 0 0 0.7em;
+  text-wrap: pretty;
+}
+
+.pocket .lede { color: var(--ink); font-size: clamp(1rem, 1.2vw, 1.35rem); }
+.pocket .meta { color: var(--ink-faint); font-family: "JetBrains Mono", monospace; font-size: 0.82rem; }
+.pocket .eyebrow { margin-bottom: 0; }
+.pocket--cta .btn { margin-bottom: 0.6rem; }
+
+/* The tagline keeps the wordmark's serif — it is part of the mark, not a caption,
+   and it gets the width to stay on one line. */
+.pocket.tagline {
+  font-family: "Cormorant Garamond", ui-serif, Georgia, serif;
+  font-style: italic;
+  font-size: clamp(1.25rem, 1.85vw, 2rem);
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+
+.dl { list-style: none; padding: 0; margin: 0 0 1em; }
+.dl { max-width: 22rem; margin-left: auto; margin-right: auto; }
+.dl li { display: flex; justify-content: center; gap: 0.9em; align-items: baseline;
+         padding: 0.55em 0; border-bottom: 1px solid rgba(164,140,255,0.14); }
+.dl a { font-weight: 600; text-decoration: none; }
+.dl a:hover { text-decoration: underline; }
+.dl span { font-family: "JetBrains Mono", monospace; font-size: 0.8rem; color: var(--ink-faint); }
+
+/* The lantern rides above the art, and lightens rather than paints over it, so
+   moving the pointer actually lights the roots instead of fogging them. */
+.lantern-glow { z-index: 60; mix-blend-mode: screen; }
+
+/* ---------- the header, moved out of the art ----------
+   The artwork's only clear band at the top runs from 22% to 75% of the width,
+   which is exactly where the navbar was not. So the bar is no longer edge to
+   edge: it is centred into the gap, and the roots pass over it. */
+
+.navbar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(1rem, 2.5vw, 2.5rem);
+  padding: 1.1rem 0;
+  width: 100%;
+  max-width: 100%;
+  background: none;
+  border: 0;
+  z-index: 40;
+}
+
+/* The brand sits in the far corner, outside the artwork's clear band — it is two
+   words on a dark rock face and stays readable there. The links keep to the gap. */
+.navbar .brand { margin-right: auto; margin-left: 1.5rem; }
+.navbar .nav-links { margin-left: auto; margin-right: 23%; gap: clamp(0.9rem, 1.8vw, 1.8rem); }
+
+.navbar .gh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  text-decoration: none;
+  color: var(--ink-dim);
+}
+.navbar .gh:hover { color: var(--ink); }
+.navbar .gh svg { display: block; }
+
+/* ---------- narrow screens ----------
+   The pocket layout is a desktop idea: it depends on gaps in the artwork that are
+   300-600px wide, and a phone is 390px across in total. So below 1100px the whole
+   thing re-forms. The canvas stops being aspect-locked, the copy becomes one
+   ordinary column, and the art retreats to the two edges where it frames the text
+   instead of running underneath it. The chambers stay visible; only the middle of
+   the illustration, which was empty anyway, is what gets given up. */
+
+.edge-art { display: none; }
+
+@media (max-width: 1100px) {
+  .deep { aspect-ratio: auto; padding: 5.5rem 0 4rem; }
+  .root-overlay { display: none; }
+
+  .edge-art {
+    display: block;
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .edge-art img {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: auto;
+    max-width: none;
+    opacity: 0.5;
+  }
+  /* Pulled partly off-frame so the chambers sit at the edge and the roots run out
+     of view, rather than the strip reading as a pasted-on border. */
+  .edge-art .l { left: 0;  transform: translateX(-34%); }
+  .edge-art .r { right: 0; transform: translateX(34%); }
+
+  .pocket {
+    position: static;
+    width: auto;
+    max-width: 32rem;
+    margin: 0 auto 3rem;
+    padding: 0 1.25rem;
+    z-index: 20;
+  }
+  .pocket--mark { max-width: 22rem; margin-bottom: 2.5rem; }
+  .pocket.tagline { white-space: normal; margin-top: 1rem; }
+
+  .navbar { position: absolute; background: none; gap: 0.75rem; }
+  .navbar .brand { margin-left: 1.25rem; flex: 0 1 auto; min-width: 0; }
+  .navbar .nav-links { margin-right: 1.25rem; flex: 0 0 auto; }
+
+  .lantern-glow { display: none; }
+}
+
+/* Phones. The edges narrow further so the reading column keeps its width, and the
+   art drops back again because at this size it is texture, not illustration. */
+@media (max-width: 560px) {
+  .edge-art img { opacity: 0.34; }
+  .edge-art .l { transform: translateX(-52%); }
+  .edge-art .r { transform: translateX(52%); }
+  .deep { padding-top: 4.5rem; }
+  .pocket { padding: 0 1.4rem; margin-bottom: 2.5rem; }
+  .pocket--mark { max-width: 17rem; }
+  .navbar .nav-links { gap: 0.9rem; font-size: 0.9rem; }
+  .navbar .gh span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .navbar .brand { font-size: 1.05rem; }
+  .dl li { font-size: 0.95rem; }
 }
