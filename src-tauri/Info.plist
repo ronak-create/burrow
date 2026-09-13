@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- macOS refuses microphone access outright, with no prompt and no error the
+       app can see, unless this string is present. Voice input and the wake word
+       both die silently without it. -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Burrow uses the microphone for voice input and the wake word. Audio is transcribed by the endpoint you configure — which is on your own machine by default — and is never written to disk.</string>
+
+  <!-- Requested by the speech synthesiser on some macOS versions. -->
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>Burrow does not use Apple's speech recognition; transcription goes to the endpoint you configure.</string>
+</dict>
+</plist>

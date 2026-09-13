@@ -1,0 +1,107 @@
+name: Release
+
+# Tag-driven. `git tag v0.3.0 && git push --tags` builds every platform on a
+# clean runner and attaches the installers to a DRAFT release, so what people
+# download is built from the tagged commit rather than from someone's laptop.
+#
+# Nothing here is signed with a real certificate. macOS builds are ad-hoc signed
+# (`signingIdentity: "-"` in tauri.conf.json) because an unsigned arm64 binary
+# will not execute at all — that buys launchability, not trust. Gatekeeper and
+# SmartScreen will still warn, and the install docs say so plainly.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build (e.g. v0.3.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: ""
+            rust-targets: ""
+          - platform: macos-latest
+            args: "--target universal-apple-darwin"
+            rust-targets: "aarch64-apple-darwin,x86_64-apple-darwin"
+          - platform: ubuntu-22.04
+            args: ""
+            rust-targets: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.platform }}
+
+      # webkit2gtk is the webview; libspeechd is what the `tts` crate talks to on
+      # Linux; alsa is the capture side of the microphone. Missing any of the
+      # three is a build failure, not a runtime one.
+      - name: Linux system deps
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev librsvg2-dev patchelf \
+            libspeechd-dev libasound2-dev libssl-dev \
+            build-essential curl wget file libxdo-dev libayatana-appindicator3-dev
+
+      - run: npm ci
+
+      - name: Verify before building
+        run: npx tsc --noEmit && npm test
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.event.inputs.tag || github.ref_name }}
+          releaseName: "Burrow __VERSION__"
+          releaseDraft: true
+          prerelease: true
+          args: ${{ matrix.args }}
+
+  # No certificate means a checksum is the only way to tell a real download from
+  # a tampered one, so publish them rather than leaving people to trust the host.
+  checksums:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checksum every asset and append to the release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          mkdir -p assets && cd assets
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --clobber
+          echo "## Checksums (SHA-256)" > ../notes.md
+          echo '```' >> ../notes.md
+          sha256sum * >> ../notes.md
+          echo '```' >> ../notes.md
+          cd ..
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body > existing.md
+          cat existing.md notes.md > final.md
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file final.md

@@ -19,22 +19,58 @@
         "minHeight": 600,
         "resizable": true,
         "decorations": false,
-        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection"
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI"
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: http://asset.localhost; font-src 'self' data:; media-src 'self' blob: data:; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "Ronak Parmar",
+    "copyright": "Copyright (c) 2026 Ronak Parmar",
+    "homepage": "https://github.com/ronak-create/burrow",
+    "category": "Productivity",
+    "licenseFile": "../LICENSE",
+    "shortDescription": "A voice-driven AI research assistant on an infinite canvas",
+    "longDescription": "Burrow is a local-first, bring-your-own-key research assistant. Canvases, documents and transcripts are plain files on your own disk; the assistant can search papers and the web, read your documents, and lay findings out on an infinite canvas with you.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "minimumSystemVersion": "10.15",
+      "signingIdentity": "-",
+      "dmg": {
+        "appPosition": {
+          "x": 180,
+          "y": 170
+        },
+        "applicationFolderPosition": {
+          "x": 480,
+          "y": 170
+        },
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        }
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "speech-dispatcher",
+          "libasound2"
+        ],
+        "recommends": [
+          "gnome-keyring"
+        ]
+      }
+    }
   }
 }

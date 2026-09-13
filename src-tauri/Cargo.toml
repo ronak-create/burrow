@@ -1,9 +1,12 @@
 [package]
 name = "burrow"
 version = "0.2.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "A voice-driven AI research assistant on an infinite canvas"
+authors = ["Ronak Parmar"]
+license = "MIT"
+repository = "https://github.com/ronak-create/burrow"
 edition = "2021"
+rust-version = "1.77"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

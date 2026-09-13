@@ -10,6 +10,40 @@ A voice-driven AI research assistant on an infinite canvas — a "digital detect
 
 **Local-first and BYOK.** Canvases, documents, and conversation transcripts are plain files on your own disk. You supply your own API keys for whichever providers you want; they are stored in your OS keychain and nothing leaves your machine except the calls you configure.
 
+## Install
+
+From the [latest release](https://github.com/ronak-create/burrow/releases/latest).
+**Nothing is signed with a real certificate**, so every platform will object on
+first run. Each release publishes SHA-256 checksums; verifying what you
+downloaded against them is the check that a certificate would otherwise be doing.
+
+**Windows** — run `Burrow_<version>_x64-setup.exe` (or the `.msi`). SmartScreen
+shows "Windows protected your PC": *More info → Run anyway*.
+
+**macOS** — open the `.dmg` and drag Burrow to Applications. The build is ad-hoc
+signed, which is enough to execute but not enough for Gatekeeper, so clear the
+download quarantine once:
+
+```bash
+xattr -cr /Applications/Burrow.app
+```
+
+Grant the microphone prompt on first use if you want voice input.
+
+**Linux** — the `.deb` or the AppImage. Text-to-speech goes through
+`speech-dispatcher` and API keys go into the Secret Service, so on a minimal
+install:
+
+```bash
+sudo apt install speech-dispatcher gnome-keyring
+```
+
+Neither is needed for the canvas or the assistant — only for spoken replies and
+stored keys respectively.
+
+If you would rather not click through any of those warnings, build from source
+with the steps under [Develop](#develop).
+
 ## Docs
 
 - [`DESIGN.md`](./DESIGN.md) — the full design, the decisions behind it, and what is deliberately deferred. Written by hand, and the place to start.
@@ -50,6 +84,15 @@ papers can be searched across four open indexes.
 
 - A bundled speech engine. Local transcription talks to a Whisper server you run;
   no binary or model file ships in the installer.
+
+**Built, but not yet verified against a live provider**
+
+- Image generation. The adapters follow the same shape as the LLM ones and the
+  tool specs were verified against a real model, but no image has been generated
+  end to end.
+- The vision half of `read_sketch`. The rendering half is tested; the Anthropic,
+  OpenAI and Google request shapes were written from their documented formats and
+  have never been sent to a model that can actually see.
 
 ## Stack
 
