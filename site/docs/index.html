@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Burrow &middot; Docs</title>
+  <meta name="description" content="Documentation for Burrow: installation, local models, voice, providers, the canvas, and where files live.">
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;1,500&family=JetBrains+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="docs-page">
+
+  <header class="docs-topbar">
+    <button class="menu-toggle" aria-label="Toggle navigation" aria-controls="sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <a class="brand" href="../">Burrow</a>
+    <span class="spacer"></span>
+    <a class="btn" href="https://github.com/ronak-create/burrow">Source</a>
+    <a class="btn btn--primary" href="../#download">Download</a>
+  </header>
+
+  <div class="sidebar-scrim"></div>
+
+  <div class="docs-shell">
+    <aside class="docs-sidebar" id="sidebar">
+      <nav>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Start</p>
+          <a href="./">Introduction</a>
+          <a href="getting-started/">Getting started</a>
+        </div>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Guides</p>
+          <a href="local-models/">Local models</a>
+          <a href="voice/">Voice &amp; wake word</a>
+          <a href="providers/">Providers &amp; endpoints</a>
+        </div>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Reference</p>
+          <a href="canvas/">The canvas</a>
+          <a href="documents/">Documents &amp; search</a>
+          <a href="workspace/">Workspace &amp; files</a>
+          <a href="architecture/">Architecture</a>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="docs-content">
+      <p class="docs-crumb">Docs</p>
+      <h1>Burrow</h1>
+      <p class="docs-lede">
+        A voice-driven research assistant that runs on Tauri, keeps a canvas
+        of notes and documents as plain files on disk, and works with a
+        hosted API key, a local model, or neither.
+      </p>
+
+      <div class="callout">
+        <p>
+          New to the app: start with <a href="getting-started/">Getting started</a>.
+          Running without a hosted key: go straight to <a href="local-models/">Local models</a>.
+        </p>
+      </div>
+
+      <ul class="guide-links">
+        <li><a href="getting-started/"><strong>Getting started</strong><span>Requirements, installing a build, running from source.</span></a></li>
+        <li><a href="local-models/"><strong>Local models</strong><span>Point Burrow at Ollama and skip API keys entirely.</span></a></li>
+        <li><a href="voice/"><strong>Voice &amp; wake word</strong><span>Whisper servers, "Hey Burrow," and the listening indicator.</span></a></li>
+        <li><a href="providers/"><strong>Providers &amp; endpoints</strong><span>BYOK, the OS keychain, and OpenAI-compatible adapters.</span></a></li>
+        <li><a href="canvas/"><strong>The canvas</strong><span>Blocks, ink, undo, and what the assistant's tools touch.</span></a></li>
+        <li><a href="documents/"><strong>Documents &amp; search</strong><span>Importing files, paper search, and image generation.</span></a></li>
+        <li><a href="workspace/"><strong>Workspace &amp; files</strong><span>The folder layout behind every board.</span></a></li>
+        <li><a href="architecture/"><strong>Architecture</strong><span>Shell, canvas, frontend, and how the pieces fit.</span></a></li>
+      </ul>
+
+      <div class="docs-pager">
+        <a href="getting-started/" class="next">
+          <span class="label">Next</span>
+          Getting started &rarr;
+        </a>
+      </div>
+    </main>
+  </div>
+
+  <script src="../assets/docs.js"></script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture &middot; Burrow Docs</title>
+  <meta name="description" content="The shell, the canvas, the frontend, and how the source tree is put together.">
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;1,500&family=JetBrains+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/style.css">
+  <link rel="stylesheet" href="../../assets/docs.css">
+</head>
+<body class="docs-page">
+
+  <header class="docs-topbar">
+    <button class="menu-toggle" aria-label="Toggle navigation" aria-controls="sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <a class="brand" href="../../">Burrow</a>
+    <span class="spacer"></span>
+    <a class="btn" href="https://github.com/ronak-create/burrow">Source</a>
+    <a class="btn btn--primary" href="../../#download">Download</a>
+  </header>
+
+  <div class="sidebar-scrim"></div>
+
+  <div class="docs-shell">
+    <aside class="docs-sidebar" id="sidebar">
+      <nav>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Start</p>
+          <a href="../">Introduction</a>
+          <a href="../getting-started/">Getting started</a>
+        </div>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Guides</p>
+          <a href="../local-models/">Local models</a>
+          <a href="../voice/">Voice &amp; wake word</a>
+          <a href="../providers/">Providers &amp; endpoints</a>
+        </div>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Reference</p>
+          <a href="../canvas/">The canvas</a>
+          <a href="../documents/">Documents &amp; search</a>
+          <a href="../workspace/">Workspace &amp; files</a>
+          <a href="./">Architecture</a>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="docs-content">
+      <p class="docs-crumb">Docs / Architecture</p>
+      <h1>Architecture</h1>
+      <p class="docs-lede">
+        Three layers: a native shell, a canvas library, and a frontend on
+        top of both.
+      </p>
+
+      <section id="shell">
+        <h2>Shell</h2>
+        <p>
+          Tauri v2, Rust plus WebView2 on Windows or WKWebView on macOS,
+          chosen over a plain browser app for real filesystem access,
+          OS-keychain key storage, background wake-word listening, and an
+          HTTP client that is not CORS-bound, which removes any need for a
+          relay proxy in front of local servers.
+        </p>
+      </section>
+
+      <section id="canvas-lib">
+        <h2>Canvas</h2>
+        <p>
+          <a href="https://github.com/xyflow/xyflow">React Flow</a>
+          (<code>@xyflow/react</code>, MIT). Every block is a plain React
+          component, and board state is literally <code>{ nodes, edges }</code>
+          JSON, which doubles as the file format on disk and as the
+          assistant's structured view of the board.
+        </p>
+      </section>
+
+      <section id="frontend">
+        <h2>Frontend</h2>
+        <p>React 19, Vite, and TypeScript.</p>
+      </section>
+
+      <section id="tree">
+        <h2>Source layout</h2>
+        <div class="tree">src/
+  agent/        the assistant loop, its tools, and paper search
+  canvas/       command layer, board store, React Flow host, block components
+  providers/    LLM and speech-to-text adapters, and the provider registry
+  screens/      workspace browser, canvas, settings, document reader
+  workspace/    workspace file I/O and autosave
+src-tauri/src/
+  workspace.rs  workspace folders, atomic board writes, transcripts, search
+  documents.rs  document import and text extraction (PDF, Word, Markdown)
+  keys.rs       BYOK keys in the OS keychain
+  speech.rs     OS text-to-speech</div>
+      </section>
+
+      <section id="deeper">
+        <h2>Going deeper</h2>
+        <ul>
+          <li><a href="https://github.com/ronak-create/burrow/blob/main/DESIGN.md">DESIGN.md</a>, the full design and the build log behind it, written by hand.</li>
+          <li><a href="https://deepwiki.com/ronak-create/burrow">DeepWiki</a>, a generated tour of the codebase, machine-written from the source.</li>
+        </ul>
+      </section>
+
+      <div class="docs-pager">
+        <a href="../workspace/">
+          <span class="label">Back</span>
+          &larr; Workspace &amp; files
+        </a>
+      </div>
+    </main>
+
+    <nav class="docs-toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+      <a href="#shell">Shell</a>
+      <a href="#canvas-lib">Canvas</a>
+      <a href="#frontend">Frontend</a>
+      <a href="#tree">Source layout</a>
+      <a href="#deeper">Going deeper</a>
+    </nav>
+  </div>
+
+  <script src="../../assets/docs.js"></script>
+</body>
+</html>

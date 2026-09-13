@@ -1,0 +1,660 @@
+/* Burrow site. One page, one dark theme, and the palette the banner art
+   already set: violet roots, lantern gold, soil-dark ground. The page is
+   meant to read as a descent — surface, then chambers, then the seam at the
+   bottom — so the section scaffolding carries strata and the pointer carries
+   a lantern. Shared by the landing page and by everything under /docs/. */
+
+:root {
+  --bg: #0a0712;
+  --bg-deep: #050308;
+  --panel: #120c22;
+  --panel-lift: #171030;
+  --panel-edge: rgba(164, 140, 255, 0.16);
+  --ink: #f4f1fb;
+  --ink-dim: #b6acd6;
+  --ink-faint: #786f97;
+  --violet: #8b6dff;
+  --violet-mid: #a48cff;
+  --violet-deep: #5b3fd1;
+  --lantern: #e8b866;
+  --lantern-dim: rgba(232, 184, 102, 0.62);
+  --radius-pill: 999px;
+  --radius-card: 16px;
+  --page-max: 1160px;
+
+  /* The etched grain from the banner, reused wherever a panel needs to feel
+     printed rather than filled. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+
+  font-size: 16px;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  background: var(--bg);
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+a { color: var(--violet-mid); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--ink); }
+
+::selection { background: var(--violet-deep); color: var(--ink); }
+
+.wrap {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* ---------- the pointer ----------
+   A carried lantern: the one object that appears in every chamber of the
+   banner. Prose keeps its caret so text stays selectable, anything clickable
+   gets the flame turned up, and a touch device gets the system default. */
+
+@media (hover: hover) and (pointer: fine) {
+  body {
+    cursor: url("cursor-lantern.svg") 4 4, default;
+  }
+
+  p, li, h1, h2, h3, h4, blockquote, code, pre, td, th, .snippet {
+    cursor: text;
+  }
+
+  a, button, summary, label, .btn, [role="button"],
+  a p, a li, a h3, a code,
+  .sidebar-group a, .docs-toc a, .menu-toggle {
+    cursor: url("cursor-lantern-lit.svg") 4 4, pointer;
+  }
+}
+
+/* The light that pointer is carrying. Positioned by interactions.js, dark
+   until the first pointer move, and never built under reduced motion. */
+.lantern-glow {
+  position: fixed;
+  top: 0; left: 0;
+  width: 460px;
+  height: 460px;
+  margin: -230px 0 0 -230px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  background: radial-gradient(circle,
+    rgba(232, 184, 102, 0.10),
+    rgba(232, 184, 102, 0.04) 38%,
+    transparent 68%);
+}
+.lantern-glow.is-lit { opacity: 1; }
+
+.btn {
+  display: inline-block;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.85rem 1.7rem;
+  border-radius: var(--radius-pill);
+  text-decoration: none;
+  border: 1px solid var(--panel-edge);
+  color: var(--ink);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  border-color: var(--lantern-dim);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px rgba(232, 184, 102, 0.12), 0 10px 30px -18px rgba(232, 184, 102, 0.5);
+}
+.btn:active { transform: translateY(0) scale(0.98); }
+
+.btn--primary {
+  background: var(--violet-mid);
+  color: var(--bg-deep);
+  border-color: transparent;
+}
+.btn--primary:hover { background: var(--lantern); color: #2a1f12; }
+
+/* ---------- navbar ---------- */
+
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  height: 68px;
+  padding: 0 1.5rem;
+  background: rgba(10, 7, 18, 0.78);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.navbar .brand {
+  font-family: "Newsreader", ui-serif, Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.2rem;
+  color: var(--ink);
+  text-decoration: none;
+  padding-bottom: 0.1em;
+}
+.navbar .brand:hover { color: var(--lantern); }
+
+.navbar .nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-left: auto;
+}
+
+.navbar .nav-links a:not(.btn) {
+  color: var(--ink-dim);
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+.navbar .nav-links a:not(.btn):hover { color: var(--ink); }
+
+.navbar .btn { padding: 0.6rem 1.3rem; font-size: 0.88rem; }
+
+@media (max-width: 640px) {
+  .navbar .nav-links a:not(.btn) { display: none; }
+}
+
+/* ---------- hero ---------- */
+
+.hero {
+  position: relative;
+  padding-top: 1.25rem;
+  text-align: center;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 480px;
+  background: radial-gradient(ellipse 60% 100% at 50% 0%, rgba(139, 109, 255, 0.22), transparent 70%);
+  pointer-events: none;
+}
+
+.hero-banner {
+  position: relative;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.hero-banner img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.hero-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, transparent 46%, var(--bg) 86%),
+    linear-gradient(to top, transparent 90%, var(--bg) 100%),
+    linear-gradient(to right, transparent 90%, var(--bg) 100%),
+    linear-gradient(to left, transparent 90%, var(--bg) 100%);
+}
+
+.hero-copy {
+  position: relative;
+  z-index: 2;
+  max-width: 640px;
+  margin: -3.5rem auto 0;
+  padding: 0 1.5rem;
+}
+
+.hero-copy p {
+  color: var(--ink-dim);
+  font-size: clamp(1.02rem, 1.7vw, 1.15rem);
+  margin: 0 0 1.9rem;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem 1.25rem;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.hero-actions .quiet {
+  color: var(--ink-faint);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
+/* The banner is short on a phone, so the copy stops climbing into it. */
+@media (max-width: 760px) {
+  .hero { padding-top: 0.75rem; }
+  .hero-copy { margin-top: -0.75rem; }
+  .strata { height: 76px; }
+}
+
+/* ---------- strata: the seam between one chamber and the next ----------
+   Soil layers, the taproot passing through them, and the same four-point
+   mark the wordmark uses as its rule. Reads as a chapter break that goes
+   down rather than across. */
+
+.strata {
+  position: relative;
+  height: 104px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.strata::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 15 15'%3E%3Cpath d='M7.5 0c.6 4.5 2.4 6.3 7.5 7.5-5.1 1.2-6.9 3-7.5 7.5-.6-4.5-2.4-6.3-7.5-7.5C5.1 6.3 6.9 4.5 7.5 0Z' fill='%23e8b866' opacity='.5'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(to bottom,
+      rgba(164, 140, 255, 0.10) 0 1px,
+      transparent 1px 7px),
+    repeating-linear-gradient(to bottom,
+      rgba(232, 184, 102, 0.07) 0 1px,
+      transparent 1px 26px);
+  background-repeat: no-repeat, repeat, repeat;
+  background-position: center, 0 0, 0 0;
+  -webkit-mask-image: radial-gradient(ellipse 32% 120% at 50% 50%, #000 12%, transparent 82%);
+  mask-image: radial-gradient(ellipse 32% 120% at 50% 50%, #000 12%, transparent 82%);
+}
+
+/* The taproot running down through the seam, cut around the mark. */
+.strata::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(to bottom,
+    transparent,
+    rgba(164, 140, 255, 0.38) 26%,
+    transparent 40%,
+    transparent 60%,
+    rgba(164, 140, 255, 0.38) 74%,
+    transparent);
+}
+
+/* ---------- section scaffolding ---------- */
+
+section.block {
+  position: relative;
+  padding: clamp(2rem, 5vw, 3.25rem) 0 clamp(3rem, 7vw, 4.5rem);
+}
+
+.block-head {
+  max-width: 620px;
+  margin: 0 0 2.75rem;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.9rem;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lantern-dim);
+}
+
+.eyebrow::before {
+  content: "";
+  width: 18px;
+  height: 1px;
+  background: var(--lantern-dim);
+  flex: none;
+}
+
+.block-head h2 {
+  font-family: "Newsreader", ui-serif, Georgia, serif;
+  font-weight: 500;
+  font-size: clamp(1.7rem, 3.4vw, 2.2rem);
+  line-height: 1.18;
+  margin: 0 0 0.6rem;
+}
+
+.block-head p {
+  color: var(--ink-dim);
+  margin: 0;
+  max-width: 55ch;
+}
+
+/* ---------- bento feature grid ---------- */
+
+.bento {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: minmax(200px, auto);
+  gap: 1rem;
+}
+
+.cell {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-card);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Etched grain, so a panel reads as printed stock rather than a filled box. */
+.cell::after,
+.snippet::after,
+.download-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: var(--grain);
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.cell-glyph {
+  width: 30px;
+  height: 30px;
+  color: var(--lantern);
+  margin-bottom: 1rem;
+}
+
+.cell h3 {
+  font-family: "Newsreader", ui-serif, Georgia, serif;
+  font-weight: 500;
+  font-size: 1.2rem;
+  line-height: 1.32;
+  margin: 0 0 0.6rem;
+  color: var(--ink);
+}
+
+.cell p {
+  color: var(--ink-dim);
+  margin: 0;
+  font-size: 0.94rem;
+  max-width: 42ch;
+}
+
+.cell--lg {
+  grid-column: span 2;
+  grid-row: span 2;
+  padding: 2.25rem 2.25rem 0;
+  background:
+    radial-gradient(ellipse 120% 90% at 100% 0%, rgba(139, 109, 255, 0.16), transparent 60%),
+    var(--panel);
+}
+
+.cell--lg .cell-glyph { width: 38px; height: 38px; }
+.cell--lg h3 { font-size: 1.5rem; }
+.cell--lg p { font-size: 1rem; max-width: 46ch; }
+
+/* What the large cell used to leave as dead space: the board itself, pinned
+   cards above the line and roots reaching up to them. */
+.cell-board {
+  position: relative;
+  z-index: 1;
+  display: block;
+  /* Bleeds to the cell edges so the ground line runs the full width rather
+     than stopping short of it. */
+  width: calc(100% + 4.5rem);
+  margin: auto -2.25rem 0;
+  color: var(--violet-mid);
+  -webkit-mask-image: linear-gradient(to bottom, #000 68%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 68%, transparent 100%);
+}
+
+.cell-board .thread { stroke: rgba(232, 184, 102, 0.38); }
+.cell-board .root { stroke: rgba(164, 140, 255, 0.5); }
+.cell-board .card { fill: rgba(244, 241, 251, 0.07); stroke: rgba(244, 241, 251, 0.32); }
+.cell-board .line { stroke: rgba(244, 241, 251, 0.26); }
+.cell-board .pin { fill: var(--lantern); }
+.cell-board .ground { stroke: rgba(164, 140, 255, 0.28); }
+
+.cell--wave { justify-content: space-between; }
+
+.cell--wave svg.wave {
+  width: 100%;
+  height: 34px;
+  color: var(--lantern);
+  opacity: 0.5;
+  margin-top: 0.75rem;
+}
+
+.cell--dotted {
+  background-image:
+    radial-gradient(rgba(164, 140, 255, 0.22) 1px, transparent 1px),
+    linear-gradient(var(--panel), var(--panel));
+  background-size: 14px 14px, 100% 100%;
+  background-position: -4px -4px, 0 0;
+}
+
+@media (max-width: 900px) {
+  .bento { grid-template-columns: repeat(2, 1fr); }
+  .cell--lg { grid-column: span 2; grid-row: span 1; padding-bottom: 0; }
+}
+
+@media (max-width: 620px) {
+  .bento { grid-template-columns: 1fr; }
+  .cell--lg { grid-column: span 1; }
+}
+
+/* ---------- local-first strip ---------- */
+
+.trust {
+  position: relative;
+  background: var(--bg-deep);
+  border-top: 1px solid var(--panel-edge);
+  border-bottom: 1px solid var(--panel-edge);
+  overflow: hidden;
+}
+
+.trust .wrap {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: center;
+  padding-top: clamp(3.5rem, 8vw, 5rem);
+  padding-bottom: clamp(3.5rem, 8vw, 5rem);
+}
+
+.trust h2 {
+  font-family: "Newsreader", ui-serif, Georgia, serif;
+  font-weight: 500;
+  font-size: clamp(1.7rem, 3.4vw, 2.2rem);
+  line-height: 1.18;
+  margin: 0 0 1rem;
+}
+
+.trust p {
+  color: var(--ink-dim);
+  margin: 0;
+  max-width: 46ch;
+}
+
+.snippet {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-card);
+  padding: 1.5rem 1.75rem;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.9rem;
+  line-height: 1.9;
+}
+
+.snippet .k { color: var(--ink-faint); }
+.snippet .v { color: var(--violet-mid); }
+.snippet .v--none { color: var(--lantern); }
+
+@media (max-width: 780px) {
+  .trust .wrap { grid-template-columns: 1fr; }
+}
+
+/* ---------- download ---------- */
+
+.download-section .block-head { max-width: 620px; margin-left: auto; margin-right: auto; text-align: center; }
+.download-section .block-head .eyebrow { justify-content: center; }
+.download-section .block-head p { margin: 0 auto; }
+
+.downloads {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin: 0 0 1.5rem;
+}
+
+.download-card {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-card);
+  padding: 1.5rem 1.5rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  transition: border-color 0.2s, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.download-card:hover { border-color: var(--lantern-dim); transform: translateY(-2px); }
+.download-card.is-recommended { border-color: rgba(164, 140, 255, 0.45); }
+
+.download-card .tag {
+  position: absolute;
+  top: -10px;
+  left: 1.4rem;
+  z-index: 3;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bg-deep);
+  background: var(--lantern);
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-pill);
+}
+
+.download-card .platform { position: relative; z-index: 1; display: flex; align-items: center; gap: 0.6rem; }
+.download-card .platform svg { width: 20px; height: 20px; color: var(--ink); flex-shrink: 0; }
+
+.download-card h3 { margin: 0; font-size: 1.05rem; font-weight: 600; color: var(--ink); }
+
+.download-card .filetype {
+  position: relative;
+  z-index: 1;
+  color: var(--ink-faint);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.78rem;
+}
+
+.download-card p { position: relative; z-index: 1; margin: 0; color: var(--ink-dim); font-size: 0.88rem; flex-grow: 1; }
+.download-card .btn { position: relative; z-index: 1; align-self: stretch; text-align: center; }
+
+.download-note {
+  font-size: 0.88rem;
+  color: var(--ink-faint);
+  text-align: center;
+  margin: 0;
+}
+.download-note a { color: var(--ink-dim); }
+.download-note a:hover { color: var(--lantern); }
+
+/* ---------- footer ---------- */
+
+.site-footer {
+  border-top: 1px solid var(--panel-edge);
+  padding: 2.25rem 0;
+}
+
+.site-footer .wrap {
+  display: flex;
+  justify-content: center;
+  text-align: center;
+}
+
+.site-footer .brand {
+  font-family: "Newsreader", ui-serif, Georgia, serif;
+  font-style: italic;
+  color: var(--ink-dim);
+  font-size: 0.95rem;
+}
+
+/* ---------- mouse interactions ---------- */
+
+.spotlight {
+  --mx: 50%;
+  --my: 50%;
+}
+
+.spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(320px circle at var(--mx) var(--my), rgba(232, 184, 102, 0.10), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.spotlight:hover::before { opacity: 1; }
+
+.cell, .download-card, .snippet {
+  position: relative;
+  z-index: 2;
+}
+
+/* ---------- descent: each chamber surfaces as it is reached ---------- */
+
+.chamber {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.chamber.is-visible { opacity: 1; transform: none; }
+
+/* ---------- reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+  .chamber { opacity: 1; transform: none; transition: none; }
+  .lantern-glow { display: none; }
+}

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Documents &amp; search &middot; Burrow Docs</title>
+  <meta name="description" content="Importing PDF, Word, Markdown and text, searching papers and the web, and generating images.">
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;1,500&family=JetBrains+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/style.css">
+  <link rel="stylesheet" href="../../assets/docs.css">
+</head>
+<body class="docs-page">
+
+  <header class="docs-topbar">
+    <button class="menu-toggle" aria-label="Toggle navigation" aria-controls="sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <a class="brand" href="../../">Burrow</a>
+    <span class="spacer"></span>
+    <a class="btn" href="https://github.com/ronak-create/burrow">Source</a>
+    <a class="btn btn--primary" href="../../#download">Download</a>
+  </header>
+
+  <div class="sidebar-scrim"></div>
+
+  <div class="docs-shell">
+    <aside class="docs-sidebar" id="sidebar">
+      <nav>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Start</p>
+          <a href="../">Introduction</a>
+          <a href="../getting-started/">Getting started</a>
+        </div>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Guides</p>
+          <a href="../local-models/">Local models</a>
+          <a href="../voice/">Voice &amp; wake word</a>
+          <a href="../providers/">Providers &amp; endpoints</a>
+        </div>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Reference</p>
+          <a href="../canvas/">The canvas</a>
+          <a href="./">Documents &amp; search</a>
+          <a href="../workspace/">Workspace &amp; files</a>
+          <a href="../architecture/">Architecture</a>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="docs-content">
+      <p class="docs-crumb">Docs / Documents &amp; search</p>
+      <h1>Documents &amp; search</h1>
+      <p class="docs-lede">
+        What a workspace can read, and where it can look things up.
+      </p>
+
+      <section id="import">
+        <h2>Importing documents</h2>
+        <p>
+          PDF, Word, Markdown, and plain text files import into a
+          workspace, get read in-app, and can be excerpted onto the board
+          next to whatever they support. Imported files are copied into the
+          workspace's own <code>documents/</code> folder, covered in
+          <a href="../workspace/">Workspace &amp; files</a>.
+        </p>
+      </section>
+
+      <section id="paper-search">
+        <h2>Paper search</h2>
+        <p>
+          The assistant can search across several open literature indexes
+          on request, pulling results straight onto the board rather than
+          into a separate results pane.
+        </p>
+      </section>
+
+      <section id="web-search">
+        <h2>Web search &amp; images</h2>
+        <p>
+          Web search and image generation are both bring-your-own-key and
+          both provider-agnostic, including a custom OpenAI-compatible
+          endpoint, so a local image server works the same way a local
+          model does. Generated images are saved as files in the
+          workspace's <code>images/</code> folder, not as inline data.
+        </p>
+      </section>
+
+      <div class="docs-pager">
+        <a href="../canvas/">
+          <span class="label">Back</span>
+          &larr; The canvas
+        </a>
+        <a href="../workspace/" class="next">
+          <span class="label">Next</span>
+          Workspace &amp; files &rarr;
+        </a>
+      </div>
+    </main>
+
+    <nav class="docs-toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+      <a href="#import">Importing documents</a>
+      <a href="#paper-search">Paper search</a>
+      <a href="#web-search">Web search &amp; images</a>
+    </nav>
+  </div>
+
+  <script src="../../assets/docs.js"></script>
+</body>
+</html>

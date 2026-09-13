@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Providers &amp; endpoints &middot; Burrow Docs</title>
+  <meta name="description" content="BYOK keys, the OS keychain, and how OpenAI-compatible endpoints are wired into Burrow.">
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;1,500&family=JetBrains+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/style.css">
+  <link rel="stylesheet" href="../../assets/docs.css">
+</head>
+<body class="docs-page">
+
+  <header class="docs-topbar">
+    <button class="menu-toggle" aria-label="Toggle navigation" aria-controls="sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <a class="brand" href="../../">Burrow</a>
+    <span class="spacer"></span>
+    <a class="btn" href="https://github.com/ronak-create/burrow">Source</a>
+    <a class="btn btn--primary" href="../../#download">Download</a>
+  </header>
+
+  <div class="sidebar-scrim"></div>
+
+  <div class="docs-shell">
+    <aside class="docs-sidebar" id="sidebar">
+      <nav>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Start</p>
+          <a href="../">Introduction</a>
+          <a href="../getting-started/">Getting started</a>
+        </div>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Guides</p>
+          <a href="../local-models/">Local models</a>
+          <a href="../voice/">Voice &amp; wake word</a>
+          <a href="./">Providers &amp; endpoints</a>
+        </div>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Reference</p>
+          <a href="../canvas/">The canvas</a>
+          <a href="../documents/">Documents &amp; search</a>
+          <a href="../workspace/">Workspace &amp; files</a>
+          <a href="../architecture/">Architecture</a>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="docs-content">
+      <p class="docs-crumb">Docs / Providers &amp; endpoints</p>
+      <h1>Providers &amp; endpoints</h1>
+      <p class="docs-lede">
+        Bring-your-own-key, stored where an OS already stores secrets, or no
+        key at all.
+      </p>
+
+      <section id="keychain">
+        <h2>Keys live in the keychain</h2>
+        <p>
+          Every API key entered in Settings goes into the OS keychain, not a
+          config file or a database. Removing a provider removes its key
+          from the keychain along with it.
+        </p>
+      </section>
+
+      <section id="factory">
+        <h2>One adapter, several providers</h2>
+        <p>
+          Providers are a factory, not a file each. <code>providers/llm/openai.ts</code>
+          exports <code>openAICompatible({url, models})</code>, and OpenAI,
+          Groq, Cerebras, and a fully custom endpoint are all configuration
+          over that same function. Adding another compatible gateway is a
+          config object, not a new integration.
+        </p>
+      </section>
+
+      <section id="speech-adapter">
+        <h2>The same pattern for speech</h2>
+        <p>
+          Voice input follows the identical shape: a local Whisper server or
+          Ollama answers exactly like a hosted provider would, because both
+          sides of the adapter, language and speech, are written against the
+          same OpenAI-compatible contract. Details on the speech side live
+          in <a href="../voice/">Voice &amp; wake word</a>.
+        </p>
+      </section>
+
+      <section id="custom-url">
+        <h2>Pointing at anything else</h2>
+        <p>
+          The custom endpoint field accepts any URL that speaks the OpenAI
+          chat completions API, hosted or on the same machine. A local image
+          generation server is wired in through the identical field, so it
+          runs the same way a local language model does.
+        </p>
+      </section>
+
+      <div class="docs-pager">
+        <a href="../voice/">
+          <span class="label">Back</span>
+          &larr; Voice &amp; wake word
+        </a>
+        <a href="../canvas/" class="next">
+          <span class="label">Next</span>
+          The canvas &rarr;
+        </a>
+      </div>
+    </main>
+
+    <nav class="docs-toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+      <a href="#keychain">Keys live in the keychain</a>
+      <a href="#factory">One adapter, several providers</a>
+      <a href="#speech-adapter">The same pattern for speech</a>
+      <a href="#custom-url">Pointing at anything else</a>
+    </nav>
+  </div>
+
+  <script src="../../assets/docs.js"></script>
+</body>
+</html>

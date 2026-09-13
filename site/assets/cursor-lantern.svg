@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
+  <!-- Burrow pointer: a carried lantern. Hotspot is the top of the wire (4,4),
+       so the lamp hangs from the pointer the way it hangs in the banner art.
+       Every stroke is drawn twice — a dark pass underneath for legibility on
+       the violet buttons, the metal pass on top for the dark page. -->
+  <circle cx="13" cy="17.4" r="4.8" fill="#e8b866" opacity=".20"/>
+  <g fill="none" stroke="#08060f" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" opacity=".85">
+    <path d="M4.5 4.5C7 6.4 10.6 7.2 13 9"/>
+    <path d="M10.4 11.4C10.4 7.6 15.6 7.6 15.6 11.4"/>
+    <path d="M9.6 12.8 10.9 11h4.2l1.3 1.8Z"/>
+    <path d="M10 12.8h6l-.5 8.2h-5Z"/>
+    <path d="M9.2 21h7.6v2.2H9.2Z"/>
+  </g>
+  <g fill="none" stroke="#ede8fb" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4.5 4.5C7 6.4 10.6 7.2 13 9"/>
+    <path d="M10.4 11.4C10.4 7.6 15.6 7.6 15.6 11.4"/>
+    <path d="M9.6 12.8 10.9 11h4.2l1.3 1.8Z" fill="#1a1330"/>
+    <path d="M10 12.8h6l-.5 8.2h-5Z" fill="#120c22"/>
+    <path d="M9.2 21h7.6v2.2H9.2Z" fill="#1a1330"/>
+  </g>
+  <g stroke="#8b6dff" stroke-width=".8" opacity=".75">
+    <path d="M11.6 13.6 11.5 20.2M14.4 13.6 14.5 20.2"/>
+  </g>
+  <path d="M13 15c1.5 1.6 1.9 2.9 1 3.9-.6.6-1.4.6-2 0-.9-1-.5-2.3 1-3.9Z" fill="#e8b866"/>
+</svg>

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Voice &amp; wake word &middot; Burrow Docs</title>
+  <meta name="description" content="Wake word, the listening indicator, and running voice input against a local Whisper server.">
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;1,500&family=JetBrains+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/style.css">
+  <link rel="stylesheet" href="../../assets/docs.css">
+</head>
+<body class="docs-page">
+
+  <header class="docs-topbar">
+    <button class="menu-toggle" aria-label="Toggle navigation" aria-controls="sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <a class="brand" href="../../">Burrow</a>
+    <span class="spacer"></span>
+    <a class="btn" href="https://github.com/ronak-create/burrow">Source</a>
+    <a class="btn btn--primary" href="../../#download">Download</a>
+  </header>
+
+  <div class="sidebar-scrim"></div>
+
+  <div class="docs-shell">
+    <aside class="docs-sidebar" id="sidebar">
+      <nav>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Start</p>
+          <a href="../">Introduction</a>
+          <a href="../getting-started/">Getting started</a>
+        </div>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Guides</p>
+          <a href="../local-models/">Local models</a>
+          <a href="./">Voice &amp; wake word</a>
+          <a href="../providers/">Providers &amp; endpoints</a>
+        </div>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Reference</p>
+          <a href="../canvas/">The canvas</a>
+          <a href="../documents/">Documents &amp; search</a>
+          <a href="../workspace/">Workspace &amp; files</a>
+          <a href="../architecture/">Architecture</a>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="docs-content">
+      <p class="docs-crumb">Docs / Voice &amp; wake word</p>
+      <h1>Voice &amp; wake word</h1>
+      <p class="docs-lede">
+        Spoken replies never needed a key. Spoken input defaults to a local
+        Whisper server, and the microphone stays off until asked to open.
+      </p>
+
+      <section id="wake-word">
+        <h2>The wake word</h2>
+        <p>
+          Always-on listening is off by default and turns on in Settings
+          &rarr; Voice, or by clicking the indicator in the assistant panel,
+          then saying "Hey Burrow." The microphone stays open after that,
+          but nothing streams anywhere: a local energy detector only wakes
+          transcription once someone actually speaks, and it drops back to
+          wake-word-only after an idle period that can be set.
+        </p>
+        <p>
+          Matching is phonetic, so ordinary mishearings of the phrase still
+          wake it. If a particular mishearing keeps getting missed, adding
+          what actually gets heard as a second phrase, separated by a comma,
+          fixes it.
+        </p>
+      </section>
+
+      <section id="indicator">
+        <h2>The indicator</h2>
+        <p>
+          One indicator shows exactly one state at a time: off (still,
+          struck through, meaning the microphone is released rather than
+          muted), waiting for the wake word, listening, thinking, or
+          speaking. While listening, it moves with the voice picked up,
+          rather than sitting still.
+        </p>
+      </section>
+
+      <section id="whisper">
+        <h2>Speech-to-text servers</h2>
+        <p>
+          Voice input defaults to a local Whisper server at
+          <code>http://127.0.0.1:8080/v1</code>. Anything speaking the
+          OpenAI audio API works the same way: <a href="https://github.com/speaches-ai/speaches">Speaches</a>,
+          <a href="https://github.com/mudler/LocalAI">LocalAI</a>, or vLLM. So does
+          <a href="https://github.com/ggml-org/whisper.cpp">whisper.cpp</a>'s
+          bundled server, which predates that API and answers on
+          <code>/inference</code> instead:
+        </p>
+        <pre><code>./build/bin/whisper-server -m models/ggml-base.en.bin --port 8080</code></pre>
+        <p>
+          The model field stays blank for whisper.cpp, since it only ever
+          serves the one model it started with. Recordings are converted to
+          16 kHz mono WAV before they are sent, matching what that server
+          requires.
+        </p>
+        <p>
+          Groq, OpenAI, and Deepgram remain in the provider picker for
+          anyone who would rather not run a server at all.
+        </p>
+      </section>
+
+      <section id="test-mic">
+        <h2>If the microphone seems not to work</h2>
+        <p>
+          Settings &rarr; Voice has a Test microphone button that runs the
+          whole path: capture, speech detection, and transcription. It
+          shows the live input level against the threshold deciding what
+          counts as speech, with a slider to move that threshold. If a
+          normal speaking voice does not cross the line, nothing further
+          down the path will work either, and this is where that becomes
+          visible.
+        </p>
+      </section>
+
+      <div class="docs-pager">
+        <a href="../local-models/">
+          <span class="label">Back</span>
+          &larr; Local models
+        </a>
+        <a href="../providers/" class="next">
+          <span class="label">Next</span>
+          Providers &amp; endpoints &rarr;
+        </a>
+      </div>
+    </main>
+
+    <nav class="docs-toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+      <a href="#wake-word">The wake word</a>
+      <a href="#indicator">The indicator</a>
+      <a href="#whisper">Speech-to-text servers</a>
+      <a href="#test-mic">Testing the microphone</a>
+    </nav>
+  </div>
+
+  <script src="../../assets/docs.js"></script>
+</body>
+</html>

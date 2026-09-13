@@ -1,0 +1,308 @@
+/* Docs shell: sidebar + content + on-page TOC. Loaded alongside style.css
+   on every page under /docs/. */
+
+body.docs-page {
+  background: var(--bg);
+}
+
+.docs-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  height: 64px;
+  padding: 0 1.25rem;
+  background: rgba(10, 7, 18, 0.86);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.docs-topbar .brand {
+  font-family: "Newsreader", ui-serif, Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.15rem;
+  color: var(--ink);
+  text-decoration: none;
+  padding-bottom: 0.1em;
+}
+.docs-topbar .brand:hover { color: var(--violet-mid); }
+
+.docs-topbar .spacer { flex: 1; }
+
+.docs-topbar .btn { padding: 0.55rem 1.2rem; font-size: 0.85rem; }
+
+.menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-edge);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.menu-toggle:hover { border-color: var(--violet-mid); }
+.menu-toggle svg { width: 18px; height: 18px; }
+
+.docs-shell {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr) 200px;
+  gap: 2.5rem;
+  align-items: start;
+  padding: 0 1.5rem;
+}
+
+/* ---------- sidebar ---------- */
+
+.docs-sidebar {
+  position: sticky;
+  top: 64px;
+  height: calc(100dvh - 64px);
+  overflow-y: auto;
+  padding: 2rem 0.5rem 2rem 0;
+}
+
+.sidebar-group { margin-bottom: 1.75rem; }
+
+.sidebar-group-title {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 0.6rem;
+}
+
+.sidebar-group a {
+  display: block;
+  font-size: 0.92rem;
+  color: var(--ink-dim);
+  text-decoration: none;
+  padding: 0.4rem 0 0.4rem 0.75rem;
+  border-left: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.sidebar-group a:hover { color: var(--ink); }
+
+.sidebar-group a.is-active {
+  color: var(--ink);
+  border-left-color: var(--violet-mid);
+  font-weight: 600;
+}
+
+/* ---------- content ---------- */
+
+.docs-content {
+  min-width: 0;
+  padding: 2.5rem 0 5rem;
+}
+
+.docs-content .docs-crumb {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+  margin: 0 0 0.9rem;
+}
+
+.docs-content h1 {
+  font-family: "Newsreader", ui-serif, Georgia, serif;
+  font-weight: 500;
+  font-size: clamp(1.9rem, 4vw, 2.4rem);
+  margin: 0 0 0.6rem;
+}
+
+.docs-lede {
+  color: var(--ink-dim);
+  font-size: 1.05rem;
+  max-width: 62ch;
+  margin: 0 0 2.5rem;
+}
+
+.docs-content section {
+  padding: 1.75rem 0;
+  border-top: 1px solid var(--panel-edge);
+  scroll-margin-top: 80px;
+}
+
+.docs-content section:first-of-type { border-top: none; padding-top: 0; }
+
+.docs-content h2 {
+  font-family: "Newsreader", ui-serif, Georgia, serif;
+  font-weight: 500;
+  font-size: 1.3rem;
+  margin: 0 0 0.9rem;
+}
+
+.docs-content p { color: var(--ink-dim); margin: 0 0 0.9rem; max-width: 66ch; }
+.docs-content li { color: var(--ink-dim); margin-bottom: 0.4rem; }
+.docs-content ul, .docs-content ol { padding-left: 1.2rem; margin: 0 0 0.9rem; max-width: 62ch; }
+
+.docs-content code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.88em;
+  color: var(--violet-mid);
+  background: var(--panel);
+  padding: 0.15em 0.4em;
+  border-radius: 5px;
+}
+
+.docs-content pre {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  overflow-x: auto;
+  margin: 0 0 1rem;
+}
+
+.docs-content pre code { background: none; padding: 0; color: var(--ink); }
+
+.docs-content .tree {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: var(--ink-dim);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.callout {
+  border: 1px solid var(--panel-edge);
+  border-left: 2px solid var(--violet-mid);
+  background: var(--panel);
+  border-radius: 0 10px 10px 0;
+  padding: 1rem 1.25rem;
+  margin: 0 0 1.5rem;
+}
+.callout p:last-child { margin-bottom: 0; }
+
+.guide-links {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.9rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.guide-links li { margin: 0; }
+
+.guide-links a {
+  display: block;
+  height: 100%;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--ink);
+  transition: border-color 0.2s, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.guide-links a:hover { border-color: var(--violet-mid); transform: translateY(-2px); color: var(--ink); }
+
+.guide-links strong { display: block; font-size: 0.98rem; margin-bottom: 0.3rem; }
+.guide-links span { display: block; font-size: 0.85rem; color: var(--ink-dim); }
+
+.docs-pager {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--panel-edge);
+}
+
+.docs-pager a {
+  color: var(--ink-dim);
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+.docs-pager a:hover { color: var(--violet-mid); }
+.docs-pager .label {
+  display: block;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 0.2rem;
+}
+.docs-pager .next { text-align: right; margin-left: auto; }
+
+/* ---------- on-page toc ---------- */
+
+.docs-toc {
+  position: sticky;
+  top: 84px;
+  padding: 2rem 0;
+  font-size: 0.85rem;
+}
+
+.docs-toc .toc-title {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 0.75rem;
+}
+
+.docs-toc a {
+  display: block;
+  color: var(--ink-dim);
+  text-decoration: none;
+  padding: 0.3rem 0;
+  border-left: 1px solid var(--panel-edge);
+  padding-left: 0.75rem;
+}
+.docs-toc a:hover { color: var(--ink); }
+.docs-toc a.is-active { color: var(--violet-mid); border-left-color: var(--violet-mid); }
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 1180px) {
+  .docs-shell { grid-template-columns: 232px minmax(0, 1fr); }
+  .docs-toc { display: none; }
+}
+
+@media (max-width: 860px) {
+  .menu-toggle { display: inline-flex; }
+
+  .docs-shell { grid-template-columns: 1fr; padding: 0 1.25rem; }
+
+  .docs-sidebar {
+    position: fixed;
+    top: 64px;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    background: var(--bg-deep);
+    border-right: 1px solid var(--panel-edge);
+    padding: 1.5rem 1.25rem;
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 25;
+  }
+
+  body.sidebar-open .docs-sidebar { transform: translateX(0); }
+
+  .sidebar-scrim {
+    display: none;
+    position: fixed;
+    inset: 64px 0 0 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 20;
+  }
+  body.sidebar-open .sidebar-scrim { display: block; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .docs-sidebar, .guide-links a { transition: none; }
+}

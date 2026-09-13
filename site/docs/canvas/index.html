@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The canvas &middot; Burrow Docs</title>
+  <meta name="description" content="Blocks, ink, the shared undo stack, and the fifteen tools the assistant uses to touch the board.">
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;1,500&family=JetBrains+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/style.css">
+  <link rel="stylesheet" href="../../assets/docs.css">
+</head>
+<body class="docs-page">
+
+  <header class="docs-topbar">
+    <button class="menu-toggle" aria-label="Toggle navigation" aria-controls="sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <a class="brand" href="../../">Burrow</a>
+    <span class="spacer"></span>
+    <a class="btn" href="https://github.com/ronak-create/burrow">Source</a>
+    <a class="btn btn--primary" href="../../#download">Download</a>
+  </header>
+
+  <div class="sidebar-scrim"></div>
+
+  <div class="docs-shell">
+    <aside class="docs-sidebar" id="sidebar">
+      <nav>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Start</p>
+          <a href="../">Introduction</a>
+          <a href="../getting-started/">Getting started</a>
+        </div>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Guides</p>
+          <a href="../local-models/">Local models</a>
+          <a href="../voice/">Voice &amp; wake word</a>
+          <a href="../providers/">Providers &amp; endpoints</a>
+        </div>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Reference</p>
+          <a href="./">The canvas</a>
+          <a href="../documents/">Documents &amp; search</a>
+          <a href="../workspace/">Workspace &amp; files</a>
+          <a href="../architecture/">Architecture</a>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="docs-content">
+      <p class="docs-crumb">Docs / The canvas</p>
+      <h1>The canvas</h1>
+      <p class="docs-lede">
+        One infinite board, built on React Flow, where board state and the
+        assistant's view of the board are the same object.
+      </p>
+
+      <section id="blocks">
+        <h2>Blocks</h2>
+        <p>
+          Note, text, shape, frame, table, diagram, doc, and image blocks
+          all live on the canvas, drawn wherever a hand or a tool call puts
+          them rather than dropped at the viewport center. Freehand ink and
+          an eraser sit alongside them, and one undo stack covers all of it:
+          Ctrl+Z undoes whichever edit happened last, no matter who made it.
+        </p>
+      </section>
+
+      <section id="commands">
+        <h2>One command layer</h2>
+        <p>
+          The load-bearing idea sits in <code>src/canvas/commands.ts</code>:
+          every mutation of the board, from the UI and from the assistant
+          alike, goes through a single <code>apply(board, command)</code>.
+          That is what makes the shared undo stack possible, and it means
+          the assistant's tool schemas are generated from the same command
+          union the UI uses, so the two cannot drift apart.
+        </p>
+      </section>
+
+      <section id="tools">
+        <h2>Fifteen tools</h2>
+        <p>
+          The assistant writes blocks, connects them, frames them, and
+          flags what it is unsure about, using the same commands a person
+          clicking around the canvas would trigger. It also reads
+          documents, reads handwriting on the ink layer, and can search
+          papers or the open web when asked, covered in
+          <a href="../documents/">Documents &amp; search</a>.
+        </p>
+      </section>
+
+      <div class="docs-pager">
+        <a href="../providers/">
+          <span class="label">Back</span>
+          &larr; Providers &amp; endpoints
+        </a>
+        <a href="../documents/" class="next">
+          <span class="label">Next</span>
+          Documents &amp; search &rarr;
+        </a>
+      </div>
+    </main>
+
+    <nav class="docs-toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+      <a href="#blocks">Blocks</a>
+      <a href="#commands">One command layer</a>
+      <a href="#tools">Fifteen tools</a>
+    </nav>
+  </div>
+
+  <script src="../../assets/docs.js"></script>
+</body>
+</html>

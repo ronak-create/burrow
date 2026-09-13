@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Local models &middot; Burrow Docs</title>
+  <meta name="description" content="Running Burrow against Ollama or any OpenAI-compatible local model, with no API key at all.">
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;1,500&family=JetBrains+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/style.css">
+  <link rel="stylesheet" href="../../assets/docs.css">
+</head>
+<body class="docs-page">
+
+  <header class="docs-topbar">
+    <button class="menu-toggle" aria-label="Toggle navigation" aria-controls="sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <a class="brand" href="../../">Burrow</a>
+    <span class="spacer"></span>
+    <a class="btn" href="https://github.com/ronak-create/burrow">Source</a>
+    <a class="btn btn--primary" href="../../#download">Download</a>
+  </header>
+
+  <div class="sidebar-scrim"></div>
+
+  <div class="docs-shell">
+    <aside class="docs-sidebar" id="sidebar">
+      <nav>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Start</p>
+          <a href="../">Introduction</a>
+          <a href="../getting-started/">Getting started</a>
+        </div>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Guides</p>
+          <a href="./">Local models</a>
+          <a href="../voice/">Voice &amp; wake word</a>
+          <a href="../providers/">Providers &amp; endpoints</a>
+        </div>
+        <div class="sidebar-group">
+          <p class="sidebar-group-title">Reference</p>
+          <a href="../canvas/">The canvas</a>
+          <a href="../documents/">Documents &amp; search</a>
+          <a href="../workspace/">Workspace &amp; files</a>
+          <a href="../architecture/">Architecture</a>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="docs-content">
+      <p class="docs-crumb">Docs / Local models</p>
+      <h1>Local models</h1>
+      <p class="docs-lede">
+        No account, no key, and no call leaving the machine, provided the
+        model in Settings is a local one.
+      </p>
+
+      <section id="ollama">
+        <h2>Ollama</h2>
+        <p>
+          Installing <a href="https://ollama.com">Ollama</a> and pulling a
+          model that supports tool calling is enough on its own. Settings
+          defaults to <code>http://127.0.0.1:11434/v1</code>, and the
+          Detect button lists whatever is already pulled on the machine.
+        </p>
+      </section>
+
+      <section id="tool-calling">
+        <h2>Why tool calling matters</h2>
+        <p>
+          A model without tool-calling support can still hold a
+          conversation, but it cannot touch the board: writing blocks,
+          connecting them, or reading a document all go through the same
+          fifteen tools described in <a href="../canvas/">The canvas</a>,
+          and a model that cannot call them is limited to talk.
+        </p>
+      </section>
+
+      <section id="custom-endpoint">
+        <h2>Any other local server</h2>
+        <p>
+          Ollama is the default, not a requirement. Anything that answers
+          the OpenAI-compatible chat completions API works the same way,
+          through the custom endpoint field in Settings. See
+          <a href="../providers/">Providers &amp; endpoints</a> for how that
+          adapter is shared across every provider, hosted or local.
+        </p>
+      </section>
+
+      <div class="docs-pager">
+        <a href="../getting-started/">
+          <span class="label">Back</span>
+          &larr; Getting started
+        </a>
+        <a href="../voice/" class="next">
+          <span class="label">Next</span>
+          Voice &amp; wake word &rarr;
+        </a>
+      </div>
+    </main>
+
+    <nav class="docs-toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+      <a href="#ollama">Ollama</a>
+      <a href="#tool-calling">Why tool calling matters</a>
+      <a href="#custom-endpoint">Any other local server</a>
+    </nav>
+  </div>
+
+  <script src="../../assets/docs.js"></script>
+</body>
+</html>
