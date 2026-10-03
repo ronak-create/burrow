@@ -13,6 +13,12 @@ A voice-driven AI research assistant on an infinite canvas — a "digital detect
 ## Screenshots
 
 <p align="center">
+  <a href="docs/media/burrow-trailer.mp4"><img src="docs/media/burrow-trailer.gif" alt="Burrow trailer: asking the assistant to explain Redis, and the board branching out" width="100%"></a>
+  <br>
+  <sub><a href="docs/media/burrow-trailer.mp4">▶ Watch the full trailer (1 min, with sound)</a></sub>
+</p>
+
+<p align="center">
   <img src="docs/screenshots/assistant-at-work.png" alt="The assistant adding a diagram and notes to the board from a chat request" width="100%">
 </p>
 
