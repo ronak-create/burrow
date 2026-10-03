@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/style.css?v=8">
   <style>:root { font-size: 17px; }</style>
   <noscript><style>.chamber { opacity: 1; transform: none; }</style></noscript>
 </head>
@@ -68,6 +68,48 @@
       </picture>
     </div>
 
+    <!-- Sprite-sheet animations, pinned to spots the artwork already drew
+         a lantern, a mushroom, a bush or a fern at, scattered down both
+         walls. Seasoning, not a second illustration. -->
+    <div class="critters" aria-hidden="true">
+      <div class="critter" style="--x:87.04;--y:2.36;--s:7.88" data-sprite="mushroomA"></div>
+      <div class="critter" style="--x:96.43;--y:4.57;--s:8.16" data-sprite="bushA"></div>
+      <div class="critter" style="--x:65.6;--y:9.36;--s:6.11" data-sprite="bushB"></div>
+      <div class="critter" style="--x:86.51;--y:12.09;--s:7.05" data-sprite="bushB"></div>
+      <div class="critter" style="--x:12.74;--y:14.41;--s:2.65" data-sprite="lanternB"></div>
+      <div class="critter" style="--x:76.12;--y:14.63;--s:8.9" data-sprite="fernB"></div>
+      <div class="critter" style="--x:89.84;--y:18.5;--s:4.28" data-sprite="lanternA"></div>
+      <div class="critter" style="--x:29.56;--y:19.86;--s:9.44" data-sprite="fern"></div>
+      <div class="critter" style="--x:6.28;--y:21.74;--s:8.22" data-sprite="bushB"></div>
+      <div class="critter" style="--x:96.58;--y:24.47;--s:7.64" data-sprite="bushB"></div>
+      <div class="critter" style="--x:9.84;--y:27.81;--s:2.65" data-sprite="lanternB"></div>
+      <div class="critter" style="--x:76.38;--y:28.81;--s:9.44" data-sprite="fern"></div>
+      <div class="critter" style="--x:83.01;--y:30.14;--s:8.29" data-sprite="bushA"></div>
+      <div class="critter" style="--x:94.59;--y:33.53;--s:4.28" data-sprite="lanternA"></div>
+      <div class="critter" style="--x:5.19;--y:38.16;--s:10.76" data-sprite="mushroomB"></div>
+      <div class="critter" style="--x:81.48;--y:40.38;--s:9.44" data-sprite="fern"></div>
+      <div class="critter" style="--x:97.73;--y:42.55;--s:6.12" data-sprite="bushA"></div>
+      <div class="critter" style="--x:6.05;--y:48.1;--s:7.65" data-sprite="bushA"></div>
+      <div class="critter" style="--x:87.78;--y:49.81;--s:7.88" data-sprite="mushroomA"></div>
+      <div class="critter" style="--x:22.4;--y:52.67;--s:8.9" data-sprite="fernB"></div>
+      <div class="critter" style="--x:9.14;--y:55.3;--s:4.28" data-sprite="lanternA"></div>
+      <div class="critter" style="--x:2.36;--y:62.67;--s:5.25" data-sprite="mushroomB"></div>
+      <div class="critter" style="--x:24.04;--y:65.59;--s:9.44" data-sprite="fern"></div>
+      <div class="critter" style="--x:97.75;--y:65.9;--s:7.09" data-sprite="mushroomA"></div>
+      <div class="critter" style="--x:17.31;--y:65.91;--s:4.93" data-sprite="bushB"></div>
+      <div class="critter" style="--x:13.98;--y:67.74;--s:6.11" data-sprite="bushB"></div>
+      <div class="critter" style="--x:90.15;--y:68.85;--s:2.81" data-sprite="lanternB"></div>
+      <div class="critter" style="--x:32.97;--y:70.88;--s:8.9" data-sprite="fernB"></div>
+      <div class="critter" style="--x:96.89;--y:80.28;--s:8.53" data-sprite="mushroomB"></div>
+      <div class="critter" style="--x:41.94;--y:81.71;--s:9.44" data-sprite="fern"></div>
+      <div class="critter" style="--x:76.6;--y:82.13;--s:8.9" data-sprite="fernB"></div>
+      <div class="critter" style="--x:83.18;--y:86.55;--s:9.44" data-sprite="fern"></div>
+      <div class="critter" style="--x:26.56;--y:86.62;--s:4.46" data-sprite="bushB"></div>
+      <div class="critter" style="--x:3.52;--y:91.39;--s:8.93" data-sprite="mushroomB"></div>
+      <div class="critter" style="--x:33.47;--y:92.12;--s:8.9" data-sprite="fernB"></div>
+      <div class="critter" style="--x:87.85;--y:92.57;--s:4.11" data-sprite="bushB"></div>
+    </div>
+
     <div class="pocket pocket--mark" style="--l:32;--t:1.4;--w:34">
       <h1 class="visually-hidden">Burrow</h1>
       <picture>
@@ -111,13 +153,16 @@
       <p>PDF, Word,<br>Markdown,<br>plain text.</p>
     </div>
 
-    <div class="pocket chamber" style="--l:36.7;--t:54;--w:30">
-      <h2>Any endpoint that speaks the API</h2>
-      <p>OpenAI, Groq, Cerebras, or your own URL &mdash; for language and for speech.
-        Point it at Ollama and it needs no key at all.</p>
-      <h2 class="spaced">Nothing leaves uninvited</h2>
-      <p>Boards, documents and transcripts are plain files on your disk. Keys live
-        in the OS keychain, or don&rsquo;t exist.</p>
+    <!-- The widest clear stretch of the artwork. Sized so roughly nine tenths
+         of the frame is open ground; the rest is roots passing in front of it,
+         on purpose. The root layer ignores the pointer, so controls still work. -->
+    <div class="pocket pocket--video chamber" style="--l:31.5;--t:53.9;--w:42">
+      <video controls playsinline preload="none"
+             poster="assets/burrow-trailer-poster.webp"
+             aria-label="Burrow trailer">
+        <source src="assets/burrow-trailer.mp4" type="video/mp4">
+      </video>
+      <button type="button" class="trailer-unmute" hidden>&#128266; Tap for sound</button>
     </div>
 
     <div class="pocket chamber" id="download" style="--l:41.8;--t:77;--w:22.7">
@@ -136,6 +181,10 @@
   </main>
 
   <script src="assets/reveal.js"></script>
+  <script src="assets/trailer.js?v=3"></script>
+  <script src="assets/wind.js?v=8"></script>
   <script src="assets/interactions.js"></script>
+  <script src="assets/critters-data.js?v=3"></script>
+  <script src="assets/critters.js?v=4"></script>
 </body>
 </html>

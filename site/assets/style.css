@@ -683,6 +683,47 @@ section.block {
   max-width: 100%;
   height: 100%;
   object-fit: fill;
+  opacity: 0.9;
+}
+
+/* ---------- critters ----------
+   A handful of the sprite-sheet animations (lantern, mushroom, bush, fern),
+   pinned to spots the banner art already painted them at, so the artwork
+   gains a little flicker and sway instead of gaining new decoration. Sits
+   in the same layer as the root artwork, on top of it in DOM order, and
+   follows the same rules: purely visual, gone below 1100px where the art
+   itself steps aside. */
+
+.critters {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 51;
+}
+
+.critter {
+  position: absolute;
+  left: calc(var(--x) * 1%);
+  top: calc(var(--y) * 1%);
+  width: calc(var(--s) * 1%);
+  transform: translate(-50%, -50%);
+}
+
+.critter img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.55));
+}
+
+/* The fern sheet was painted a shade greyer than the fronds it hangs from. */
+.critter[data-sprite^="fern"] img {
+  filter: saturate(1.6) brightness(1.08) drop-shadow(0 2px 5px rgba(0, 0, 0, 0.55));
+}
+
+@media (max-width: 1100px) {
+  .critters { display: none; }
 }
 
 .pocket {
@@ -721,6 +762,83 @@ section.block {
 .pocket .meta { color: var(--ink-faint); font-family: "JetBrains Mono", monospace; font-size: 0.82rem; }
 .pocket .eyebrow { margin-bottom: 0; }
 .pocket--cta .btn { margin-bottom: 0.6rem; }
+
+/* No frame: the edges are feathered out so the trailer reads as a window in
+   the dark rather than a box placed on it. The bottom fade is kept short so the
+   controls stay legible. */
+.pocket--video video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: transparent;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 7%, #000 93%, transparent),
+    linear-gradient(to bottom, transparent, #000 10%, #000 95%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, #000 7%, #000 93%, transparent),
+    linear-gradient(to bottom, transparent, #000 10%, #000 95%, transparent);
+  mask-composite: intersect;
+}
+
+.trailer-unmute {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-pill);
+  background: rgba(10, 7, 18, 0.78);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+.trailer-unmute:hover { border-color: var(--violet-mid); }
+.trailer-unmute[hidden] { display: none; }
+
+/* ---------- wind ----------
+   Two viewport-sized canvases fixed over the whole page. The back layer sits
+   under the copy and the root art, the front one over everything. Neither
+   takes the pointer. */
+
+.wind {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+.wind--back  { z-index: 10; }
+.wind--front { z-index: 90; }   /* the top of the page: over the art, the copy, even the toggle */
+.wind canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.wind-toggle {
+  position: fixed;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 70;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem 0.45rem 0.65rem;
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-pill);
+  background: rgba(10, 7, 18, 0.72);
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+.wind-toggle svg { width: 1.05rem; height: 1.05rem; }
+.wind-toggle:hover { color: var(--ink); border-color: var(--violet-mid); }
+.wind-toggle[aria-pressed="false"] { color: var(--ink-faint); }
+.wind-toggle[aria-pressed="false"] svg { opacity: 0.5; }
+
 
 /* The tagline keeps the wordmark's serif — it is part of the mark, not a caption,
    and it gets the width to stay on one line. */
@@ -823,6 +941,8 @@ section.block {
     z-index: 20;
   }
   .pocket--mark { max-width: 22rem; margin-bottom: 2.5rem; }
+  /* Relative (for the sound button), so the desktop offsets must be cleared. */
+  .pocket--video { max-width: 44rem; position: relative; left: auto; top: auto; }
   .pocket.tagline { white-space: normal; margin-top: 1rem; }
 
   .navbar { position: absolute; background: none; gap: 0.75rem; }
@@ -845,4 +965,6 @@ section.block {
   .navbar .gh span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .navbar .brand { font-size: 1.05rem; }
   .dl li { font-size: 0.95rem; }
+  .wind-toggle { padding: 0.55rem; }
+  .wind-toggle-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 }

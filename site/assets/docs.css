@@ -184,6 +184,21 @@ body.docs-page {
 }
 .callout p:last-child { margin-bottom: 0; }
 
+.docs-figure { margin: 1.4rem 0 2rem; }
+.docs-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+}
+.docs-figure figcaption {
+  margin-top: 0.6rem;
+  font-size: 0.86rem;
+  color: var(--ink-faint);
+}
+
 .guide-links {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
