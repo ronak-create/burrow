@@ -10,6 +10,31 @@ A voice-driven AI research assistant on an infinite canvas — a "digital detect
 
 **Local-first and BYOK.** Canvases, documents, and conversation transcripts are plain files on your own disk. You supply your own API keys for whichever providers you want; they are stored in your OS keychain and nothing leaves your machine except the calls you configure.
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/assistant-at-work.png" alt="The assistant adding a diagram and notes to the board from a chat request" width="100%">
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/canvas.png" alt="The Getting Started board with frames and notes"></td>
+    <td width="50%"><img src="docs/screenshots/workspaces.png" alt="The workspace browser"></td>
+  </tr>
+  <tr>
+    <td align="center">The canvas</td>
+    <td align="center">Workspaces</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/settings-providers.png" alt="Provider settings pointed at a local Ollama endpoint"></td>
+    <td width="50%"><img src="docs/screenshots/settings-voice.png" alt="Voice settings with a local Whisper server and microphone test"></td>
+  </tr>
+  <tr>
+    <td align="center">Providers: local or BYOK</td>
+    <td align="center">Voice: local Whisper, mic test</td>
+  </tr>
+</table>
+
 ## Install
 
 From the [latest release](https://github.com/ronak-create/burrow/releases/latest).
