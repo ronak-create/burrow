@@ -931,6 +931,16 @@ section.block {
      of view, rather than the strip reading as a pasted-on border. */
   .edge-art .l { left: 0;  transform: translateX(-34%); }
   .edge-art .r { right: 0; transform: translateX(34%); }
+  /* Fade each strip out toward the middle so its inner edge never shows as a
+     line down the page. */
+  .edge-art .l {
+    -webkit-mask-image: linear-gradient(to right, #000 45%, transparent 92%);
+    mask-image: linear-gradient(to right, #000 45%, transparent 92%);
+  }
+  .edge-art .r {
+    -webkit-mask-image: linear-gradient(to left, #000 45%, transparent 92%);
+    mask-image: linear-gradient(to left, #000 45%, transparent 92%);
+  }
 
   .pocket {
     position: static;
