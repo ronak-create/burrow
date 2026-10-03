@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://deepwiki.com/ronak-create/burrow"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+  <a href="https://burrow.ronakparmar.space/docs/"><img src="https://img.shields.io/badge/Docs-Read_the_guide-8b6dff?style=for-the-badge&logo=readthedocs&logoColor=white" alt="Read the docs"></a>
 </p>
 
 A voice-driven AI research assistant on an infinite canvas — a "digital detective board" for going deep on a topic. Bring your own documents, talk to an assistant that can search, fetch papers, write notes, build diagrams and tables, generate images, and lay it all out on the board with you.
@@ -78,7 +78,7 @@ with the steps under [Develop](#develop).
 ## Docs
 
 - [`DESIGN.md`](./DESIGN.md) — the full design, the decisions behind it, and what is deliberately deferred. Written by hand, and the place to start.
-- [DeepWiki](https://deepwiki.com/ronak-create/burrow) — a generated tour of the codebase, and a question box you can ask about it. Machine-written from the source, so it is a map rather than an authority: where it and `DESIGN.md` disagree, the design doc is the one someone meant.
+- [The docs site](https://burrow.ronakparmar.space/docs/) — getting started, local models, voice, providers, and how the canvas and workspaces fit together.
 
 ## Status
 
